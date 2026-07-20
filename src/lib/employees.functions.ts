@@ -22,6 +22,7 @@ const createSchema = z.object({
   pixKey: z.string().trim().min(3).max(200),
   dailyAmount: z.number().nonnegative().max(100000),
   active: z.boolean().optional(),
+  role: z.enum(["funcionario", "cliente"]).optional(),
 });
 
 export const criarFuncionario = createServerFn({ method: "POST" })
