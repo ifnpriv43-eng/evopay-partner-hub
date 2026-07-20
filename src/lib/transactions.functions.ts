@@ -50,9 +50,9 @@ export const listarTransacoes = createServerFn({ method: "POST" })
 export const resumoDashboard = createServerFn({ method: "GET" }).handler(async () => {
   const s = await requireSession();
   const all =
-    s.role === "funcionario"
-      ? await db.listTransactionsForEmployee(s.userId!)
-      : await db.listTransactions();
+    s.role === "admin"
+      ? await db.listTransactions()
+      : await db.listTransactionsForEmployee(s.userId!);
 
   const today = new Date().toISOString().slice(0, 10);
   const monthPrefix = new Date().toISOString().slice(0, 7);
