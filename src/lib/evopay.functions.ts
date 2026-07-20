@@ -166,7 +166,7 @@ export const sacarMeuSaldo = createServerFn({ method: "POST" })
     // Verifica saldo disponível
     const list = await db.listTransactionsForEmployee(s.userId!);
     const recebido = list
-      .filter((t) => t.kind === "pagamento_funcionario" && t.status === "pago")
+      .filter((t) => (t.kind === "pagamento_funcionario" || t.kind === "deposito") && t.status === "pago")
       .reduce((a, b) => a + b.amount, 0);
     const sacado = list
       .filter((t) => t.kind === "saque" && (t.status === "pago" || t.status === "pendente"))
