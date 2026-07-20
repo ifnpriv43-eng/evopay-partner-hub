@@ -37,7 +37,7 @@ export function TransactionDetailDialog({ tx, onOpenChange }: Props) {
   function downloadReceipt() {
     if (!tx) return;
     const lines = [
-      "COMPROVANTE — EvoPay Dashboard",
+      "COMPROVANTE — Lynx Wallet",
       "".padEnd(40, "-"),
       `Tipo:          ${kindLabel[tx.kind]}`,
       `Descrição:     ${tx.description}`,
@@ -47,7 +47,7 @@ export function TransactionDetailDialog({ tx, onOpenChange }: Props) {
       tx.paidAt ? `Pago em:       ${new Date(tx.paidAt).toLocaleString("pt-BR")}` : "",
       tx.counterparty ? `Contraparte:   ${tx.counterparty}` : "",
       tx.pixKey ? `Chave Pix:     ${tx.pixKey}` : "",
-      tx.externalId ? `ID EvoPay:     ${tx.externalId}` : "",
+      tx.externalId ? `ID gateway:    ${tx.externalId}` : "",
       `ID interno:    ${tx.id}`,
     ].filter(Boolean).join("\n");
     const blob = new Blob([lines], { type: "text/plain;charset=utf-8" });
@@ -84,7 +84,7 @@ export function TransactionDetailDialog({ tx, onOpenChange }: Props) {
               <Row label="Chave Pix" value={tx.pixKey} mono />
               <Row label="Criado em" value={new Date(tx.createdAt).toLocaleString("pt-BR")} />
               <Row label="Pago em" value={tx.paidAt ? new Date(tx.paidAt).toLocaleString("pt-BR") : undefined} />
-              <Row label="ID EvoPay" value={tx.externalId} mono />
+              <Row label="ID gateway" value={tx.externalId} mono />
               <Row label="ID interno" value={tx.id} mono />
             </div>
 

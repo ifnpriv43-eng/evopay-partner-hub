@@ -5,7 +5,8 @@ import { login, me } from "@/lib/auth.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Zap, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import lynxLogo from "@/assets/lynx-logo.png.asset.json";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
@@ -50,10 +51,10 @@ function LoginPage() {
 
       <div className="relative z-10 w-full max-w-md">
         <Link to="/" className="flex items-center justify-center gap-2 mb-8">
-          <div className="h-9 w-9 rounded-lg gradient-primary flex items-center justify-center">
-            <Zap className="h-4 w-4 text-primary-foreground" />
+          <div className="h-10 w-10 rounded-lg bg-black flex items-center justify-center overflow-hidden">
+            <img src={lynxLogo.url} alt="Lynx Wallet" className="h-9 w-9 object-contain" />
           </div>
-          <span className="font-display font-bold text-xl">EvoPay</span>
+          <span className="font-display font-bold text-xl">Lynx Wallet</span>
         </Link>
 
         <div className="rounded-2xl border border-border bg-card/80 backdrop-blur p-8 shadow-card">
