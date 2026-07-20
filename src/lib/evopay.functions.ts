@@ -40,7 +40,8 @@ export const criarDeposito = createServerFn({ method: "POST" })
 const sacarSchema = z.object({
   amount: z.number().positive().max(100000),
   pixKey: z.string().trim().min(3).max(200),
-  beneficiaryName: z.string().trim().min(2).max(120),
+  keyType: z.enum(["cpf", "cnpj", "email", "telefone", "aleatoria"]).optional(),
+  beneficiaryName: z.string().trim().max(120).optional(),
   description: z.string().trim().max(200).optional(),
 });
 
