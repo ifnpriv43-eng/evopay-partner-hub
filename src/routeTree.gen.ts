@@ -9,38 +9,176 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
+import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app.index'
+import { Route as AuthenticatedAppSaquesRouteImport } from './routes/_authenticated/app.saques'
+import { Route as AuthenticatedAppMeusRecebimentosRouteImport } from './routes/_authenticated/app.meus-recebimentos'
+import { Route as AuthenticatedAppHistoricoRouteImport } from './routes/_authenticated/app.historico'
+import { Route as AuthenticatedAppFuncionariosRouteImport } from './routes/_authenticated/app.funcionarios'
+import { Route as AuthenticatedAppDepositosRouteImport } from './routes/_authenticated/app.depositos'
+import { Route as ApiPublicEvopayWebhookRouteImport } from './routes/api/public/evopay.webhook'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
+const AuthenticatedAppSaquesRoute = AuthenticatedAppSaquesRouteImport.update({
+  id: '/saques',
+  path: '/saques',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
+const AuthenticatedAppMeusRecebimentosRoute =
+  AuthenticatedAppMeusRecebimentosRouteImport.update({
+    id: '/meus-recebimentos',
+    path: '/meus-recebimentos',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppHistoricoRoute =
+  AuthenticatedAppHistoricoRouteImport.update({
+    id: '/historico',
+    path: '/historico',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppFuncionariosRoute =
+  AuthenticatedAppFuncionariosRouteImport.update({
+    id: '/funcionarios',
+    path: '/funcionarios',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppDepositosRoute =
+  AuthenticatedAppDepositosRouteImport.update({
+    id: '/depositos',
+    path: '/depositos',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const ApiPublicEvopayWebhookRoute = ApiPublicEvopayWebhookRouteImport.update({
+  id: '/api/public/evopay/webhook',
+  path: '/api/public/evopay/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/app': typeof AuthenticatedAppRouteWithChildren
+  '/app/depositos': typeof AuthenticatedAppDepositosRoute
+  '/app/funcionarios': typeof AuthenticatedAppFuncionariosRoute
+  '/app/historico': typeof AuthenticatedAppHistoricoRoute
+  '/app/meus-recebimentos': typeof AuthenticatedAppMeusRecebimentosRoute
+  '/app/saques': typeof AuthenticatedAppSaquesRoute
+  '/app/': typeof AuthenticatedAppIndexRoute
+  '/api/public/evopay/webhook': typeof ApiPublicEvopayWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/app/depositos': typeof AuthenticatedAppDepositosRoute
+  '/app/funcionarios': typeof AuthenticatedAppFuncionariosRoute
+  '/app/historico': typeof AuthenticatedAppHistoricoRoute
+  '/app/meus-recebimentos': typeof AuthenticatedAppMeusRecebimentosRoute
+  '/app/saques': typeof AuthenticatedAppSaquesRoute
+  '/app': typeof AuthenticatedAppIndexRoute
+  '/api/public/evopay/webhook': typeof ApiPublicEvopayWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
+  '/_authenticated/app/depositos': typeof AuthenticatedAppDepositosRoute
+  '/_authenticated/app/funcionarios': typeof AuthenticatedAppFuncionariosRoute
+  '/_authenticated/app/historico': typeof AuthenticatedAppHistoricoRoute
+  '/_authenticated/app/meus-recebimentos': typeof AuthenticatedAppMeusRecebimentosRoute
+  '/_authenticated/app/saques': typeof AuthenticatedAppSaquesRoute
+  '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
+  '/api/public/evopay/webhook': typeof ApiPublicEvopayWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/app'
+    | '/app/depositos'
+    | '/app/funcionarios'
+    | '/app/historico'
+    | '/app/meus-recebimentos'
+    | '/app/saques'
+    | '/app/'
+    | '/api/public/evopay/webhook'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/app/depositos'
+    | '/app/funcionarios'
+    | '/app/historico'
+    | '/app/meus-recebimentos'
+    | '/app/saques'
+    | '/app'
+    | '/api/public/evopay/webhook'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/login'
+    | '/_authenticated/app'
+    | '/_authenticated/app/depositos'
+    | '/_authenticated/app/funcionarios'
+    | '/_authenticated/app/historico'
+    | '/_authenticated/app/meus-recebimentos'
+    | '/_authenticated/app/saques'
+    | '/_authenticated/app/'
+    | '/api/public/evopay/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  LoginRoute: typeof LoginRoute
+  ApiPublicEvopayWebhookRoute: typeof ApiPublicEvopayWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +186,102 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/app': {
+      id: '/_authenticated/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AuthenticatedAppRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/app/': {
+      id: '/_authenticated/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/saques': {
+      id: '/_authenticated/app/saques'
+      path: '/saques'
+      fullPath: '/app/saques'
+      preLoaderRoute: typeof AuthenticatedAppSaquesRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/meus-recebimentos': {
+      id: '/_authenticated/app/meus-recebimentos'
+      path: '/meus-recebimentos'
+      fullPath: '/app/meus-recebimentos'
+      preLoaderRoute: typeof AuthenticatedAppMeusRecebimentosRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/historico': {
+      id: '/_authenticated/app/historico'
+      path: '/historico'
+      fullPath: '/app/historico'
+      preLoaderRoute: typeof AuthenticatedAppHistoricoRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/funcionarios': {
+      id: '/_authenticated/app/funcionarios'
+      path: '/funcionarios'
+      fullPath: '/app/funcionarios'
+      preLoaderRoute: typeof AuthenticatedAppFuncionariosRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/depositos': {
+      id: '/_authenticated/app/depositos'
+      path: '/depositos'
+      fullPath: '/app/depositos'
+      preLoaderRoute: typeof AuthenticatedAppDepositosRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/api/public/evopay/webhook': {
+      id: '/api/public/evopay/webhook'
+      path: '/api/public/evopay/webhook'
+      fullPath: '/api/public/evopay/webhook'
+      preLoaderRoute: typeof ApiPublicEvopayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AuthenticatedAppRouteChildren {
+  AuthenticatedAppDepositosRoute: typeof AuthenticatedAppDepositosRoute
+  AuthenticatedAppFuncionariosRoute: typeof AuthenticatedAppFuncionariosRoute
+  AuthenticatedAppHistoricoRoute: typeof AuthenticatedAppHistoricoRoute
+  AuthenticatedAppMeusRecebimentosRoute: typeof AuthenticatedAppMeusRecebimentosRoute
+  AuthenticatedAppSaquesRoute: typeof AuthenticatedAppSaquesRoute
+  AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
+}
+
+const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
+  AuthenticatedAppDepositosRoute: AuthenticatedAppDepositosRoute,
+  AuthenticatedAppFuncionariosRoute: AuthenticatedAppFuncionariosRoute,
+  AuthenticatedAppHistoricoRoute: AuthenticatedAppHistoricoRoute,
+  AuthenticatedAppMeusRecebimentosRoute: AuthenticatedAppMeusRecebimentosRoute,
+  AuthenticatedAppSaquesRoute: AuthenticatedAppSaquesRoute,
+  AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
+}
+
+const AuthenticatedAppRouteWithChildren =
+  AuthenticatedAppRoute._addFileChildren(AuthenticatedAppRouteChildren)
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAppRoute: typeof AuthenticatedAppRouteWithChildren
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAppRoute: AuthenticatedAppRouteWithChildren,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  LoginRoute: LoginRoute,
+  ApiPublicEvopayWebhookRoute: ApiPublicEvopayWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
