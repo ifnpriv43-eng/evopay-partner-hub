@@ -34,7 +34,13 @@ export async function executarPagamentoDiario(): Promise<{
     }
   }
   const cfg = await db.getAutoPay();
-  await db.setAutoPay({ ...cfg, lastRunAt: new Date().toISOString() });
+  const brtDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date()); // YYYY-MM-DD
+  await db.setAutoPay({ ...cfg, lastRunAt: `${brtDate}T00:00:00.000Z` });
   return { total: emps.length, results };
 }
 
