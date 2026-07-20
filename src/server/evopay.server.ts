@@ -39,13 +39,20 @@ export interface CreatePixResult {
   qrCode: string;
   qrImage?: string;
   expiresAt?: string;
+  amount: number;
 }
 
 interface EvoPayTransaction {
   id: string;
+  amount?: number;
   qrCodeText?: string | null;
   qrCodeBase64?: string | null;
   qrCodeUrl?: string | null;
+  status?: string;
+  endToEndId?: string | null;
+  paidAt?: string | null;
+  updatedAt?: string | null;
+}
   status?: string;
   endToEndId?: string | null;
   paidAt?: string | null;
