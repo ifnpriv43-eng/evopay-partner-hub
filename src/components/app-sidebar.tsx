@@ -26,7 +26,7 @@ const employeeItems = [
   { title: "Histórico", url: "/app/historico", icon: History },
 ];
 
-export function AppSidebar({ role }: { role: "admin" | "funcionario" }) {
+export function AppSidebar({ role }: { role: "admin" | "funcionario" | "cliente" }) {
   const currentPath = useRouterState({ select: (r) => r.location.pathname });
   const { isMobile, setOpenMobile } = useSidebar();
   const items = role === "admin" ? adminItems : employeeItems;

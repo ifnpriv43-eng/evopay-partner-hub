@@ -116,6 +116,7 @@ function FuncionariosPage() {
           <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
             <tr>
               <th className="text-left py-3 px-4 font-medium">Nome</th>
+              <th className="text-left py-3 px-4 font-medium">Tipo</th>
               <th className="text-left py-3 px-4 font-medium">E-mail</th>
               <th className="text-left py-3 px-4 font-medium">Chave Pix</th>
               <th className="text-right py-3 px-4 font-medium">Diária</th>
@@ -127,9 +128,14 @@ function FuncionariosPage() {
             {(list.data ?? []).map((e) => (
               <tr key={e.id}>
                 <td className="py-3 px-4 font-medium">{e.name}</td>
+                <td className="py-3 px-4">
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] uppercase font-semibold ${e.role === "cliente" ? "bg-blue-500/15 text-blue-400" : "bg-primary/15 text-primary"}`}>
+                    {e.role === "cliente" ? "Cliente" : "Funcionário"}
+                  </span>
+                </td>
                 <td className="py-3 px-4 text-muted-foreground">{e.email}</td>
                 <td className="py-3 px-4 text-muted-foreground font-mono text-xs">{e.pixKey}</td>
-                <td className="py-3 px-4 text-right font-mono">{brl(e.dailyAmount ?? 0)}</td>
+                <td className="py-3 px-4 text-right font-mono">{e.role === "cliente" ? "—" : brl(e.dailyAmount ?? 0)}</td>
                 <td className="py-3 px-4 text-center">
                   <span className={`inline-block h-2 w-2 rounded-full ${e.active ? "bg-success" : "bg-muted-foreground"}`} />
                 </td>
@@ -140,7 +146,7 @@ function FuncionariosPage() {
               </tr>
             ))}
             {(!list.data || list.data.length === 0) && (
-              <tr><td colSpan={6} className="text-center text-muted-foreground py-8">Nenhum funcionário cadastrado.</td></tr>
+              <tr><td colSpan={7} className="text-center text-muted-foreground py-8">Nenhum cadastro.</td></tr>
             )}
           </tbody>
         </table>
@@ -180,29 +186,41 @@ function DeleteBtn({ id, name }: { id: string; name: string }) {
 
 function NewEmployeeDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const qc = useQueryClient();
-  const [f, setF] = useState({ name: "", email: "", password: "", pixKey: "", dailyAmount: "" });
+  const [f, setF] = useState({ name: "", email: "", password: "", pixKey: "", dailyAmount: "", role: "funcionario" as "funcionario" | "cliente" });
   const create = useMutation({
     mutationFn: () => criarFuncionario({
-      data: { ...f, dailyAmount: parseFloat(f.dailyAmount) || 0, active: true },
+      data: {
+        name: f.name, email: f.email, password: f.password, pixKey: f.pixKey,
+        dailyAmount: parseFloat(f.dailyAmount) || 0, active: true, role: f.role,
+      },
     }),
     onSuccess: (r) => {
       if (!r.ok) { toast.error(r.error); return; }
       qc.invalidateQueries({ queryKey: ["employees"] });
       onOpenChange(false);
-      setF({ name: "", email: "", password: "", pixKey: "", dailyAmount: "" });
-      toast.success("Funcionário adicionado");
+      setF({ name: "", email: "", password: "", pixKey: "", dailyAmount: "", role: "funcionario" });
+      toast.success(f.role === "cliente" ? "Cliente adicionado" : "Funcionário adicionado");
     },
   });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Adicionar funcionário</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Adicionar {f.role === "cliente" ? "cliente" : "funcionário"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>Tipo de cadastro</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button type="button" variant={f.role === "funcionario" ? "default" : "outline"} className={f.role === "funcionario" ? "gradient-primary text-primary-foreground" : ""} onClick={() => setF({ ...f, role: "funcionario" })}>Funcionário</Button>
+              <Button type="button" variant={f.role === "cliente" ? "default" : "outline"} className={f.role === "cliente" ? "gradient-primary text-primary-foreground" : ""} onClick={() => setF({ ...f, role: "cliente" })}>Cliente</Button>
+            </div>
+          </div>
           <div className="space-y-1.5"><Label>Nome</Label><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>E-mail</Label><Input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Senha</Label><Input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Chave Pix</Label><Input value={f.pixKey} onChange={(e) => setF({ ...f, pixKey: e.target.value })} /></div>
-          <div className="space-y-1.5"><Label>Valor diário (R$)</Label><Input type="number" step="0.01" value={f.dailyAmount} onChange={(e) => setF({ ...f, dailyAmount: e.target.value })} /></div>
+          {f.role === "funcionario" && (
+            <div className="space-y-1.5"><Label>Valor diário (R$)</Label><Input type="number" step="0.01" value={f.dailyAmount} onChange={(e) => setF({ ...f, dailyAmount: e.target.value })} /></div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>

@@ -22,6 +22,7 @@ const createSchema = z.object({
   pixKey: z.string().trim().min(3).max(200),
   dailyAmount: z.number().nonnegative().max(100000),
   active: z.boolean().optional(),
+  role: z.enum(["funcionario", "cliente"]).optional(),
 });
 
 export const criarFuncionario = createServerFn({ method: "POST" })
@@ -37,7 +38,7 @@ export const criarFuncionario = createServerFn({ method: "POST" })
       pixKey: data.pixKey,
       dailyAmount: data.dailyAmount,
       active: data.active ?? true,
-      role: "funcionario",
+      role: data.role ?? "funcionario",
     });
     const { passwordHash: _p, ...safe } = u;
     return { ok: true as const, employee: safe };
@@ -75,7 +76,7 @@ export const excluirFuncionario = createServerFn({ method: "POST" })
 
 export const pagarTodos = createServerFn({ method: "POST" }).handler(async () => {
   await requireAdmin();
-  const emps = (await db.listEmployees()).filter((e) => e.active && e.dailyAmount && e.pixKey);
+  const emps = (await db.listEmployees()).filter((e) => e.role === "funcionario" && e.active && e.dailyAmount && e.pixKey);
   const results: Array<{ employeeId: string; ok: boolean; error?: string }> = [];
   for (const e of emps) {
     try {
