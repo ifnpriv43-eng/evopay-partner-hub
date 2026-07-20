@@ -19,6 +19,7 @@ export const Route = createFileRoute("/_authenticated/app/depositos")({
 });
 
 function DepositosPage() {
+  const { user } = Route.useRouteContext();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
