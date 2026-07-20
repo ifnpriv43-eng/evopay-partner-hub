@@ -37,7 +37,7 @@ const criarPixSchema = z.object({
 export const criarDeposito = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => criarPixSchema.parse(raw))
   .handler(async ({ data }) => {
-    await requireAdmin();
+    const s = await requireSession();
     const pix = await createPix(data);
     if (Math.abs(pix.amount - data.amount) > 0.001) {
       console.warn(`[deposito] EvoPay retornou valor diferente. Enviado=${data.amount} recebido=${pix.amount}`);
@@ -51,6 +51,7 @@ export const criarDeposito = createServerFn({ method: "POST" })
       externalId: pix.externalId,
       qrCode: pix.qrCode,
       qrImage: pix.qrImage,
+      employeeId: s.role === "admin" ? undefined : s.userId!,
     });
     return { tx, qrCode: pix.qrCode, qrImage: pix.qrImage, amount: pix.amount };
   });
