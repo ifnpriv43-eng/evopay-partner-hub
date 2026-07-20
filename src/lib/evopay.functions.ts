@@ -64,10 +64,25 @@ const sacarSchema = z.object({
   description: z.string().trim().max(200).optional(),
 });
 
+async function assertSaldoParaSaque(userId: string, amount: number) {
+  const list = await db.listTransactionsForEmployee(userId);
+  const recebido = list
+    .filter((t) => (t.kind === "pagamento_funcionario" || t.kind === "deposito") && t.status === "pago")
+    .reduce((a, b) => a + b.amount, 0);
+  const sacado = list
+    .filter((t) => t.kind === "saque" && (t.status === "pago" || t.status === "pendente"))
+    .reduce((a, b) => a + b.amount, 0);
+  const disponivel = recebido - sacado;
+  if (amount > disponivel) {
+    throw new Error(`Saldo insuficiente. Disponível: R$ ${disponivel.toFixed(2)}`);
+  }
+}
+
 export const criarSaque = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => sacarSchema.parse(raw))
   .handler(async ({ data }) => {
-    await requireAdmin();
+    const s = await requireSession();
+    if (s.role !== "admin") await assertSaldoParaSaque(s.userId!, data.amount);
     const payout = await createPayout({
       amount: data.amount,
       pixKey: data.pixKey,
@@ -83,6 +98,7 @@ export const criarSaque = createServerFn({ method: "POST" })
       pixKey: data.pixKey,
       counterparty: data.keyType ?? data.beneficiaryName ?? "—",
       externalId: payout.externalId,
+      employeeId: s.role === "admin" ? undefined : s.userId!,
       paidAt: payout.status === "pago" ? new Date().toISOString() : undefined,
     });
     return { tx };
