@@ -22,7 +22,7 @@ function ApiPage() {
   const tokens = useQuery({ queryKey: ["api-tokens"], queryFn: () => listarTokens() });
   const [openNew, setOpenNew] = useState(false);
   const [newToken, setNewToken] = useState<string | null>(null);
-  const baseUrl = typeof window !== "undefined" ? `${window.location.origin}/api/public/v1` : "https://seu-dominio/api/public/v1";
+  const baseUrl = "http://168.222.97.48/api/public/v1";
   const activeToken = tokens.data?.find((t) => t.active);
   const exampleToken = newToken ?? (activeToken ? `pk_live_••••••••${activeToken.last4}` : "SEU_TOKEN_AQUI");
 
