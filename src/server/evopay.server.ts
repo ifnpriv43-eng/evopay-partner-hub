@@ -102,11 +102,16 @@ export async function getBalance(): Promise<{ available: number; pending: number
   if (!TOKEN) {
     return { available: 12480.55, pending: 1300 };
   }
-  const res = await call<{ available_cents: number; pending_cents: number }>("/v1/balance");
-  return {
-    available: res.available_cents / 100,
-    pending: res.pending_cents / 100,
-  };
+  try {
+    const res = await call<{ available_cents: number; pending_cents: number }>("/v1/balance");
+    return {
+      available: res.available_cents / 100,
+      pending: res.pending_cents / 100,
+    };
+  } catch (err) {
+    console.error("[evopay] getBalance failed, returning zeros:", err);
+    return { available: 0, pending: 0 };
+  }
 }
 
 export const isMock = !TOKEN;
