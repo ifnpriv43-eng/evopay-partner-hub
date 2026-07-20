@@ -134,7 +134,7 @@ function FuncionariosPage() {
                   </span>
                 </td>
                 <td className="py-3 px-4 text-muted-foreground">{e.email}</td>
-                <td className="py-3 px-4 text-muted-foreground font-mono text-xs">{e.pixKey}</td>
+                <td className="py-3 px-4 text-muted-foreground font-mono text-xs">{e.pixKey || <span className="italic text-muted-foreground/60">— o próprio usuário escolhe</span>}</td>
                 <td className="py-3 px-4 text-right font-mono">{e.role === "cliente" ? "—" : brl(e.dailyAmount ?? 0)}</td>
                 <td className="py-3 px-4 text-center">
                   <span className={`inline-block h-2 w-2 rounded-full ${e.active ? "bg-success" : "bg-muted-foreground"}`} />
