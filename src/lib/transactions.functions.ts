@@ -41,9 +41,9 @@ export const listarTransacoes = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => filterSchema.parse(raw ?? {}))
   .handler(async ({ data }) => {
     const s = await requireSession();
-    const rows = s.role === "funcionario"
-      ? await db.listTransactionsForEmployee(s.userId!)
-      : await db.listTransactions(data as { kind?: TxKind; status?: TxStatus; limit?: number });
+    const rows = s.role === "admin"
+      ? await db.listTransactions(data as { kind?: TxKind; status?: TxStatus; limit?: number })
+      : await db.listTransactionsForEmployee(s.userId!);
     return syncPending(rows);
   });
 
