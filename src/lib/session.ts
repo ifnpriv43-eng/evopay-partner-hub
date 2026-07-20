@@ -2,7 +2,7 @@
 
 export type SessionData = {
   userId?: string;
-  role?: "admin" | "funcionario";
+  role?: "admin" | "funcionario" | "cliente";
 };
 
 export function getSessionConfig() {
