@@ -78,10 +78,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "EvoPay Dashboard — Gateway Pix" },
+      { title: "Lynx Wallet — Gateway Pix" },
       { name: "description", content: "Painel de gateway Pix: depósitos, saques, histórico e pagamentos automáticos para sua equipe." },
-      { name: "author", content: "EvoPay Dashboard" },
-      { property: "og:title", content: "EvoPay Dashboard — Gateway Pix" },
+      { name: "author", content: "Lynx Wallet" },
+      { property: "og:title", content: "Lynx Wallet — Gateway Pix" },
       { property: "og:description", content: "Painel de gateway Pix: depósitos, saques, histórico e pagamentos automáticos." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
