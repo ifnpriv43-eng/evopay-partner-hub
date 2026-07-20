@@ -109,7 +109,7 @@ const qrDecodeSchema = z.object({ qrCode: z.string().trim().min(20) });
 export const decodificarQr = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => qrDecodeSchema.parse(raw))
   .handler(async ({ data }) => {
-    await requireAdmin();
+    await requireSession();
     return decodeQrCode(data.qrCode);
   });
 
@@ -122,7 +122,7 @@ const saqueQrSchema = z.object({
 export const criarSaqueQr = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => saqueQrSchema.parse(raw))
   .handler(async ({ data }) => {
-    await requireAdmin();
+    const s = await requireSession();
     let info: Awaited<ReturnType<typeof decodeQrCode>> | null = null;
     try {
       info = await decodeQrCode(data.qrCode);
@@ -131,6 +131,7 @@ export const criarSaqueQr = createServerFn({ method: "POST" })
     }
     const amount = info?.amount ?? data.amount;
     if (!amount || amount <= 0) throw new Error("Valor obrigatório para QR estático");
+    if (s.role !== "admin") await assertSaldoParaSaque(s.userId!, amount);
     const payout = await createPayoutByQr({
       qrCode: data.qrCode,
       amount: info?.amount ? undefined : data.amount,
@@ -144,6 +145,7 @@ export const criarSaqueQr = createServerFn({ method: "POST" })
       pixKey: info?.name ?? "QR Code",
       counterparty: info?.name ?? "QR",
       externalId: payout.externalId,
+      employeeId: s.role === "admin" ? undefined : s.userId!,
       paidAt: payout.status === "pago" ? new Date().toISOString() : undefined,
     });
     return { tx, info };
