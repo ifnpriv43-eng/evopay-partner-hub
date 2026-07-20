@@ -34,7 +34,7 @@ function FuncionariosPage() {
     mutationFn: () => pagarTodos(),
     onSuccess: (r) => {
       qc.invalidateQueries();
-      toast.success(`${r.results.filter((x) => x.ok).length}/${r.total} pagamentos processados`);
+      toast.success(`${r.results.filter((x: { ok: boolean }) => x.ok).length}/${r.total} pagamentos processados`);
     },
     onError: (e) => toast.error((e as Error).message),
   });

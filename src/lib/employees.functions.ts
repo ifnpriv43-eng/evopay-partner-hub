@@ -76,35 +76,8 @@ export const excluirFuncionario = createServerFn({ method: "POST" })
 
 export const pagarTodos = createServerFn({ method: "POST" }).handler(async () => {
   await requireAdmin();
-  const emps = (await db.listEmployees()).filter((e) => e.role === "funcionario" && e.active && e.dailyAmount && e.pixKey);
-  const results: Array<{ employeeId: string; ok: boolean; error?: string }> = [];
-  for (const e of emps) {
-    try {
-      const payout = await createPayout({
-        amount: e.dailyAmount ?? 0,
-        pixKey: e.pixKey!,
-        beneficiaryName: e.name,
-        description: `Diária ${e.name}`,
-      });
-      await db.createTransaction({
-        kind: "pagamento_funcionario",
-        status: payout.status,
-        amount: e.dailyAmount ?? 0,
-        description: `Diária ${e.name}`,
-        pixKey: e.pixKey,
-        counterparty: e.name,
-        employeeId: e.id,
-        externalId: payout.externalId,
-        paidAt: payout.status === "pago" ? new Date().toISOString() : undefined,
-      });
-      results.push({ employeeId: e.id, ok: true });
-    } catch (err) {
-      results.push({ employeeId: e.id, ok: false, error: (err as Error).message });
-    }
-  }
-  const cfg = await db.getAutoPay();
-  await db.setAutoPay({ ...cfg, lastRunAt: new Date().toISOString() });
-  return { total: emps.length, results };
+  const { executarPagamentoDiario } = await import("@/server/autopay.server");
+  return executarPagamentoDiario();
 });
 
 export const obterAutoPay = createServerFn({ method: "GET" }).handler(async () => {
