@@ -25,7 +25,7 @@ async function admin() {
 // row <-> domain
 type UserRow = {
   id: string; email: string; name: string; password_hash: string; role: UserRole;
-  pix_key: string | null; daily_amount: number | string | null; active: boolean; created_at: string;
+  pix_key: string | null; daily_amount: number | null; active: boolean; created_at: string;
 };
 function userFromRow(r: UserRow): User {
   return {
@@ -49,7 +49,7 @@ function userToRow(u: Partial<User>): Partial<UserRow> {
 }
 
 type TxRow = {
-  id: string; kind: TxKind; status: TxStatus; amount: number | string; description: string;
+  id: string; kind: TxKind; status: TxStatus; amount: number; description: string;
   counterparty: string | null; pix_key: string | null; qr_code: string | null; qr_image: string | null;
   external_id: string | null; employee_id: string | null; created_at: string; paid_at: string | null;
 };
@@ -108,13 +108,13 @@ export const supabaseStore: DataStore = {
       active: input.active ?? true,
       created_at: new Date().toISOString(),
     };
-    const { data, error } = await sb.from("app_users").insert(row).select("*").single();
+    const { data, error } = await sb.from("app_users").insert(row as never).select("*").single();
     if (error) throw error;
     return userFromRow(data as UserRow);
   },
   async updateEmployee(id, patch) {
     const sb = await admin();
-    const { data } = await sb.from("app_users").update(userToRow(patch)).eq("id", id).select("*").maybeSingle();
+    const { data } = await sb.from("app_users").update(userToRow(patch) as never).eq("id", id).select("*").maybeSingle();
     return data ? userFromRow(data as UserRow) : null;
   },
   async deleteEmployee(id) {
@@ -154,13 +154,13 @@ export const supabaseStore: DataStore = {
       id: uid("tx"),
       created_at: new Date().toISOString(),
     } as TxRow;
-    const { data, error } = await sb.from("app_transactions").insert(row).select("*").single();
+    const { data, error } = await sb.from("app_transactions").insert(row as never).select("*").single();
     if (error) throw error;
     return txFromRow(data as TxRow);
   },
   async updateTransaction(id, patch) {
     const sb = await admin();
-    const { data } = await sb.from("app_transactions").update(txToRow(patch)).eq("id", id).select("*").maybeSingle();
+    const { data } = await sb.from("app_transactions").update(txToRow(patch) as never).eq("id", id).select("*").maybeSingle();
     return data ? txFromRow(data as TxRow) : null;
   },
 
@@ -172,7 +172,7 @@ export const supabaseStore: DataStore = {
   },
   async setAutoPay(cfg) {
     const sb = await admin();
-    await sb.from("app_config").upsert({ key: "autopay", value: cfg, updated_at: new Date().toISOString() });
+    await sb.from("app_config").upsert({ key: "autopay", value: cfg as unknown as Record<string, unknown>, updated_at: new Date().toISOString() } as never);
     return cfg;
   },
 };
