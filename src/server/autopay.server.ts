@@ -5,9 +5,16 @@ export async function executarPagamentoDiario(): Promise<{
   total: number;
   results: Array<{ employeeId: string; ok: boolean; error?: string }>;
 }> {
-  const emps = (await db.listEmployees()).filter(
-    (e) => e.role === "funcionario" && e.active && e.dailyAmount && e.pixKey,
+  const all = await db.listEmployees();
+  const emps = all.filter((e) => e.role === "funcionario" && e.active && e.dailyAmount && e.pixKey);
+  const skipped = all.filter(
+    (e) => e.role === "funcionario" && !(e.active && e.dailyAmount && e.pixKey),
   );
+  for (const s of skipped) {
+    console.log(
+      `[autopay] pulando ${s.name} — active=${s.active} dailyAmount=${s.dailyAmount ?? 0} pixKey=${s.pixKey ? "ok" : "FALTANDO"}`,
+    );
+  }
   const results: Array<{ employeeId: string; ok: boolean; error?: string }> = [];
   for (const e of emps) {
     try {
