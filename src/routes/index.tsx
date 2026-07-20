@@ -1,7 +1,8 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { me } from "@/lib/auth.functions";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Zap, Shield, TrendingUp } from "lucide-react";
+import { ArrowRight, Shield, TrendingUp, Zap } from "lucide-react";
+import lynxLogo from "@/assets/lynx-logo.png.asset.json";
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
@@ -19,10 +20,10 @@ function Landing() {
 
       <header className="relative z-10 flex items-center justify-between px-6 md:px-12 py-6">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
-            <Zap className="h-4 w-4 text-primary-foreground" />
+          <div className="h-9 w-9 rounded-lg bg-black flex items-center justify-center overflow-hidden">
+            <img src={lynxLogo.url} alt="Lynx Wallet" className="h-8 w-8 object-contain" />
           </div>
-          <span className="font-display font-bold text-lg">EvoPay</span>
+          <span className="font-display font-bold text-lg">Lynx Wallet</span>
         </div>
         <Link to="/login">
           <Button variant="ghost">Entrar</Button>

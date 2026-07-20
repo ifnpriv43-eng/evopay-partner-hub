@@ -31,7 +31,7 @@ function DashboardPage() {
         <div className="rounded-lg border border-warning/40 bg-warning/10 text-warning-foreground px-4 py-3 text-sm flex gap-2 items-start">
           <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
           <div>
-            <strong className="text-warning">Modo demo:</strong> o token da EvoPay não está configurado.
+            <strong className="text-warning">Modo demo:</strong> o token do gateway não está configurado.
             Estou mostrando dados de exemplo. Adicione <code>EVOPAY_TOKEN</code> no seu <code>.env</code> pra usar a API real.
           </div>
         </div>
