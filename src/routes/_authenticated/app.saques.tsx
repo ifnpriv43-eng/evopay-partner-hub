@@ -42,6 +42,9 @@ function SaquesPage() {
   const [scanOpen, setScanOpen] = useState(false);
   const [detail, setDetail] = useState<Transaction | null>(null);
   const [merchant, setMerchant] = useState<string | null>(null);
+  const [qrInfo, setQrInfo] = useState<{ dynamic: boolean; amount?: number; name?: string } | null>(null);
+  const [tab, setTab] = useState<"chave" | "qr">("chave");
+  const [decoding, setDecoding] = useState(false);
 
   const list = useQuery({
     queryKey: ["txs", "saque"],
@@ -50,17 +53,28 @@ function SaquesPage() {
   });
 
   const create = useMutation({
-    mutationFn: () => criarSaque({
-      data: {
-        amount: parseFloat(amount),
-        pixKey,
-        keyType,
-        beneficiaryName: "—",
-        description: desc || undefined,
-      },
-    }),
+    mutationFn: async () => {
+      if (tab === "qr") {
+        return criarSaqueQr({
+          data: {
+            qrCode: brCode.trim(),
+            amount: qrInfo?.dynamic ? undefined : parseFloat(amount),
+            description: desc || undefined,
+          },
+        });
+      }
+      return criarSaque({
+        data: {
+          amount: parseFloat(amount),
+          pixKey,
+          keyType,
+          beneficiaryName: "—",
+          description: desc || undefined,
+        },
+      });
+    },
     onSuccess: () => {
-      setAmount(""); setPixKey(""); setDesc(""); setBrCode(""); setMerchant(null);
+      setAmount(""); setPixKey(""); setDesc(""); setBrCode(""); setMerchant(null); setQrInfo(null);
       qc.invalidateQueries({ queryKey: ["txs"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["saldo"] });
@@ -69,19 +83,47 @@ function SaquesPage() {
     onError: (e) => toast.error((e as Error).message),
   });
 
-  function processBrCode(text: string) {
-    const parsed = parsePixBrCode(text);
-    if (!parsed || !parsed.pixKey) {
-      toast.error("QR Pix inválido — não consegui extrair a chave");
+  // Auto-decodifica o QR conforme o texto muda (debounced).
+  useEffect(() => {
+    const code = brCode.trim();
+    if (!code || code.length < 20) {
+      setQrInfo(null);
+      setMerchant(null);
       return;
     }
-    setPixKey(parsed.pixKey);
-    if (parsed.keyType) setKeyType(parsed.keyType);
-    if (parsed.amount) setAmount(String(parsed.amount));
-    if (parsed.description) setDesc(parsed.description);
-    setMerchant(parsed.merchantName ?? null);
+    const parsed = parsePixBrCode(code);
+    if (parsed?.pixKey) {
+      setPixKey(parsed.pixKey);
+      if (parsed.keyType) setKeyType(parsed.keyType);
+      if (parsed.amount) setAmount(String(parsed.amount));
+      if (parsed.description) setDesc(parsed.description);
+      setMerchant(parsed.merchantName ?? null);
+      setQrInfo({ dynamic: false, amount: parsed.amount, name: parsed.merchantName });
+      return;
+    }
+    // QR dinâmico ou não parseável localmente — pergunta pro EvoPay.
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      setDecoding(true);
+      try {
+        const info = await decodificarQr({ data: { qrCode: code } });
+        if (cancelled) return;
+        setQrInfo({ dynamic: info.qrCodeType === "DYNAMIC", amount: info.amount, name: info.name });
+        setMerchant(info.name ?? null);
+        if (info.amount) setAmount(String(info.amount));
+        if (info.additionalInfo) setDesc(info.additionalInfo);
+      } catch (e) {
+        if (!cancelled) toast.error("QR Pix inválido — " + (e as Error).message);
+      } finally {
+        if (!cancelled) setDecoding(false);
+      }
+    }, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [brCode]);
+
+  function onQrDecoded(text: string) {
     setBrCode(text);
-    toast.success("QR lido — confira e envie");
+    setTab("qr");
   }
 
   return (
