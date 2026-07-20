@@ -1,14 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
-import { useSession } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { db } from "@/server/db";
-import { getSessionConfig, type SessionData } from "./session";
+import { getSessionData } from "./session.server";
 import type { TxKind, TxStatus } from "@/server/db/schema";
 
 async function requireSession() {
-  const session = await useSession<SessionData>(getSessionConfig());
-  if (!session.data.userId) throw new Error("Não autorizado");
-  return session.data;
+  const session = await getSessionData();
+  if (!session.userId) throw new Error("Não autorizado");
+  return session;
 }
 
 const filterSchema = z.object({

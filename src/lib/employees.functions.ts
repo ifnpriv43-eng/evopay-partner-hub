@@ -1,13 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
-import { useSession } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { db, password as pw } from "@/server/db";
 import { createPayout } from "@/server/evopay.server";
-import { getSessionConfig, type SessionData } from "./session";
+import { getSessionData } from "./session.server";
 
 async function requireAdmin() {
-  const session = await useSession<SessionData>(getSessionConfig());
-  if (session.data.role !== "admin") throw new Error("Não autorizado");
+  const session = await getSessionData();
+  if (session.role !== "admin") throw new Error("Não autorizado");
 }
 
 export const listarFuncionarios = createServerFn({ method: "GET" }).handler(async () => {

@@ -32,6 +32,7 @@ function LoginPage() {
         toast.error(res.error);
         return;
       }
+      window.localStorage.setItem("evopay-session-token", res.sessionToken);
       toast.success(`Bem-vindo, ${res.user.name}`);
       await router.invalidate();
       router.navigate({ to: "/app" });
