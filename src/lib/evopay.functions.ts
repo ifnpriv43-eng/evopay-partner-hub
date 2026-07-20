@@ -80,7 +80,52 @@ export const criarSaque = createServerFn({ method: "POST" })
       counterparty: data.keyType ?? data.beneficiaryName ?? "—",
       externalId: payout.externalId,
       paidAt: payout.status === "pago" ? new Date().toISOString() : undefined,
+  });
+
+const qrDecodeSchema = z.object({ qrCode: z.string().trim().min(20) });
+
+export const decodificarQr = createServerFn({ method: "POST" })
+  .inputValidator((raw: unknown) => qrDecodeSchema.parse(raw))
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    return decodeQrCode(data.qrCode);
+  });
+
+const saqueQrSchema = z.object({
+  qrCode: z.string().trim().min(20),
+  amount: z.number().positive().max(100000).optional(),
+  description: z.string().trim().max(200).optional(),
+});
+
+export const criarSaqueQr = createServerFn({ method: "POST" })
+  .inputValidator((raw: unknown) => saqueQrSchema.parse(raw))
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    let info: Awaited<ReturnType<typeof decodeQrCode>> | null = null;
+    try {
+      info = await decodeQrCode(data.qrCode);
+    } catch {
+      info = null;
+    }
+    const amount = info?.amount ?? data.amount;
+    if (!amount || amount <= 0) throw new Error("Valor obrigatório para QR estático");
+    const payout = await createPayoutByQr({
+      qrCode: data.qrCode,
+      amount: info?.amount ? undefined : data.amount,
+      description: data.description,
     });
+    const tx = await db.createTransaction({
+      kind: "saque",
+      status: payout.status,
+      amount,
+      description: data.description ?? "Saque via QR",
+      pixKey: info?.name ?? "QR Code",
+      counterparty: info?.name ?? "QR",
+      externalId: payout.externalId,
+      paidAt: payout.status === "pago" ? new Date().toISOString() : undefined,
+    });
+    return { tx, info };
+  });
     return { tx };
   });
 
