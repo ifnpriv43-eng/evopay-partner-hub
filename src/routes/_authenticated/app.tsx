@@ -18,6 +18,7 @@ function AppLayout() {
 
   async function handleLogout() {
     await logoutFn();
+    window.localStorage.removeItem("evopay-session-token");
     toast.success("Sessão encerrada");
     await router.invalidate();
     router.navigate({ to: "/login" });

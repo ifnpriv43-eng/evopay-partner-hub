@@ -3,6 +3,7 @@ import { useSession } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { db, password as pw } from "@/server/db";
 import { getSessionConfig, type SessionData } from "./session";
+import { createSessionToken, getSessionData } from "./session.server";
 
 const loginSchema = z.object({
   email: z.string().trim().email().max(255),
@@ -18,7 +19,8 @@ export const login = createServerFn({ method: "POST" })
     }
     const session = await useSession<SessionData>(getSessionConfig());
     await session.update({ userId: user.id, role: user.role });
-    return { ok: true as const, user: { id: user.id, name: user.name, role: user.role, email: user.email } };
+    const sessionToken = createSessionToken({ userId: user.id, role: user.role });
+    return { ok: true as const, sessionToken, user: { id: user.id, name: user.name, role: user.role, email: user.email } };
   });
 
 export const logout = createServerFn({ method: "POST" }).handler(async () => {
@@ -28,9 +30,9 @@ export const logout = createServerFn({ method: "POST" }).handler(async () => {
 });
 
 export const me = createServerFn({ method: "GET" }).handler(async () => {
-  const session = await useSession<SessionData>(getSessionConfig());
-  if (!session.data.userId) return null;
-  const user = await db.getUserById(session.data.userId);
+  const session = await getSessionData();
+  if (!session.userId) return null;
+  const user = await db.getUserById(session.userId);
   if (!user) return null;
   return {
     id: user.id,

@@ -3,14 +3,14 @@ import { useSession } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { db } from "@/server/db";
 import { createPix, createPayout, getBalance, isMock } from "@/server/evopay.server";
-import { getSessionConfig, type SessionData } from "./session";
+import { getSessionData } from "./session.server";
 
 async function requireAdmin() {
-  const session = await useSession<SessionData>(getSessionConfig());
-  if (!session.data.userId || session.data.role !== "admin") {
+  const session = await getSessionData();
+  if (!session.userId || session.role !== "admin") {
     throw new Error("Não autorizado");
   }
-  return session.data;
+  return session;
 }
 
 const criarPixSchema = z.object({
