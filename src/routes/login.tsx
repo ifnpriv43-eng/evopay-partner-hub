@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import lynxLogo from "@/assets/lynx-logo.png.asset.json";
+
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
@@ -52,7 +52,7 @@ function LoginPage() {
       <div className="relative z-10 w-full max-w-md">
         <Link to="/" className="flex items-center justify-center gap-2 mb-8">
           <div className="h-10 w-10 rounded-lg bg-black flex items-center justify-center overflow-hidden">
-            <img src={lynxLogo.url} alt="Lynx Wallet" className="h-9 w-9 object-contain" />
+            <img src="/lynx-logo.png" alt="Lynx Wallet" className="h-9 w-9 object-contain" />
           </div>
           <span className="font-display font-bold text-xl">Lynx Wallet</span>
         </Link>

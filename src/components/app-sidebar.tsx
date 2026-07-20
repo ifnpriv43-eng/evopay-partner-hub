@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { LayoutDashboard, ArrowDownToLine, ArrowUpFromLine, History, Users, Wallet, Code2 } from "lucide-react";
-import lynxLogo from "@/assets/lynx-logo.png.asset.json";
+
 import {
   Sidebar,
   SidebarContent,
@@ -43,7 +43,7 @@ export function AppSidebar({ role }: { role: "admin" | "funcionario" | "cliente"
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-2 px-2 py-2">
           <div className="h-8 w-8 rounded-lg bg-black flex items-center justify-center flex-shrink-0 overflow-hidden">
-            <img src={lynxLogo.url} alt="Lynx Wallet" className="h-7 w-7 object-contain" />
+            <img src="/lynx-logo.png" alt="Lynx Wallet" className="h-7 w-7 object-contain" />
           </div>
           <span className="font-display font-bold text-base group-data-[collapsible=icon]:hidden">Lynx Wallet</span>
         </div>
