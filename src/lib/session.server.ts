@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { getRequestHeader, useSession } from "@tanstack/react-start/server";
-import { getSessionConfig, type SessionData } from "./session";
+import { getSessionConfig, getSessionSecret, type SessionData } from "./session";
 
 type TokenPayload = Required<Pick<SessionData, "userId" | "role">> & {
   iat: number;
@@ -8,7 +8,7 @@ type TokenPayload = Required<Pick<SessionData, "userId" | "role">> & {
 };
 
 function getSecret() {
-  return process.env.SESSION_SECRET ?? "dev-only-session-secret-please-change-in-production-32chars";
+  return getSessionSecret();
 }
 
 function base64UrlEncode(value: string) {
