@@ -189,8 +189,32 @@ export const meuSaldoFuncionario = createServerFn({ method: "GET" }).handler(asy
       (t.status === "pago" || t.status === "pendente") &&
       (t.paidAt ?? t.createdAt).slice(0, 10) === hojeBrasilia,
   );
+  const cfg = await db.getAutoPay();
   const diariaAReceber =
     user?.role === "funcionario" && user.active && !temDiariaHoje ? Math.max(0, user.dailyAmount ?? 0) : 0;
+  const diariaAmanha =
+    user?.role === "funcionario" && user.active && temDiariaHoje ? Math.max(0, user.dailyAmount ?? 0) : 0;
+  const recebido = list
+    .filter((t) => (t.kind === "pagamento_funcionario" || t.kind === "deposito") && t.status === "pago")
+    .reduce((a, b) => a + b.amount, 0);
+  const pendente = list
+    .filter((t) => (t.kind === "pagamento_funcionario" || t.kind === "deposito") && t.status === "pendente")
+    .reduce((a, b) => a + b.amount, 0);
+  const sacado = list
+    .filter((t) => t.kind === "saque" && (t.status === "pago" || t.status === "pendente"))
+    .reduce((a, b) => a + b.amount, 0);
+  return {
+    recebido,
+    pendente: pendente + diariaAReceber + diariaAmanha,
+    sacado,
+    disponivel: Math.max(0, recebido - sacado),
+    diariaAReceber,
+    diariaAmanha,
+    autoPay: { enabled: cfg.enabled, hour: cfg.hour, minute: cfg.minute },
+    jaPagoHoje: temDiariaHoje,
+    hasPixKey: !!user?.pixKey,
+  };
+});
   const recebido = list
     .filter((t) => (t.kind === "pagamento_funcionario" || t.kind === "deposito") && t.status === "pago")
     .reduce((a, b) => a + b.amount, 0);
