@@ -186,29 +186,41 @@ function DeleteBtn({ id, name }: { id: string; name: string }) {
 
 function NewEmployeeDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const qc = useQueryClient();
-  const [f, setF] = useState({ name: "", email: "", password: "", pixKey: "", dailyAmount: "" });
+  const [f, setF] = useState({ name: "", email: "", password: "", pixKey: "", dailyAmount: "", role: "funcionario" as "funcionario" | "cliente" });
   const create = useMutation({
     mutationFn: () => criarFuncionario({
-      data: { ...f, dailyAmount: parseFloat(f.dailyAmount) || 0, active: true },
+      data: {
+        name: f.name, email: f.email, password: f.password, pixKey: f.pixKey,
+        dailyAmount: parseFloat(f.dailyAmount) || 0, active: true, role: f.role,
+      },
     }),
     onSuccess: (r) => {
       if (!r.ok) { toast.error(r.error); return; }
       qc.invalidateQueries({ queryKey: ["employees"] });
       onOpenChange(false);
-      setF({ name: "", email: "", password: "", pixKey: "", dailyAmount: "" });
-      toast.success("Funcionário adicionado");
+      setF({ name: "", email: "", password: "", pixKey: "", dailyAmount: "", role: "funcionario" });
+      toast.success(f.role === "cliente" ? "Cliente adicionado" : "Funcionário adicionado");
     },
   });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Adicionar funcionário</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Adicionar {f.role === "cliente" ? "cliente" : "funcionário"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>Tipo de cadastro</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button type="button" variant={f.role === "funcionario" ? "default" : "outline"} className={f.role === "funcionario" ? "gradient-primary text-primary-foreground" : ""} onClick={() => setF({ ...f, role: "funcionario" })}>Funcionário</Button>
+              <Button type="button" variant={f.role === "cliente" ? "default" : "outline"} className={f.role === "cliente" ? "gradient-primary text-primary-foreground" : ""} onClick={() => setF({ ...f, role: "cliente" })}>Cliente</Button>
+            </div>
+          </div>
           <div className="space-y-1.5"><Label>Nome</Label><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>E-mail</Label><Input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Senha</Label><Input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Chave Pix</Label><Input value={f.pixKey} onChange={(e) => setF({ ...f, pixKey: e.target.value })} /></div>
-          <div className="space-y-1.5"><Label>Valor diário (R$)</Label><Input type="number" step="0.01" value={f.dailyAmount} onChange={(e) => setF({ ...f, dailyAmount: e.target.value })} /></div>
+          {f.role === "funcionario" && (
+            <div className="space-y-1.5"><Label>Valor diário (R$)</Label><Input type="number" step="0.01" value={f.dailyAmount} onChange={(e) => setF({ ...f, dailyAmount: e.target.value })} /></div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
