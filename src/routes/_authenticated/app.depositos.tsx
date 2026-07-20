@@ -19,6 +19,7 @@ export const Route = createFileRoute("/_authenticated/app/depositos")({
 });
 
 function DepositosPage() {
+  const { user } = Route.useRouteContext();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
@@ -101,7 +102,7 @@ function DepositosPage() {
                   <td className="py-3 px-4"><StatusBadge status={t.status} /></td>
                   <td className="py-3 px-4 text-right font-mono font-semibold text-success">+{brl(t.amount)}</td>
                   <td className="py-3 px-4 text-right whitespace-nowrap">
-                    {t.status === "pendente" && (
+                    {t.status === "pendente" && user.role === "admin" && (
                       <Button size="sm" variant="ghost" onClick={() => simulate.mutate(t.id)}>
                         <CheckCircle2 className="h-4 w-4 mr-1" /> Simular
                       </Button>

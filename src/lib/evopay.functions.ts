@@ -37,7 +37,7 @@ const criarPixSchema = z.object({
 export const criarDeposito = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => criarPixSchema.parse(raw))
   .handler(async ({ data }) => {
-    await requireAdmin();
+    const s = await requireSession();
     const pix = await createPix(data);
     if (Math.abs(pix.amount - data.amount) > 0.001) {
       console.warn(`[deposito] EvoPay retornou valor diferente. Enviado=${data.amount} recebido=${pix.amount}`);
@@ -51,6 +51,7 @@ export const criarDeposito = createServerFn({ method: "POST" })
       externalId: pix.externalId,
       qrCode: pix.qrCode,
       qrImage: pix.qrImage,
+      employeeId: s.role === "admin" ? undefined : s.userId!,
     });
     return { tx, qrCode: pix.qrCode, qrImage: pix.qrImage, amount: pix.amount };
   });
@@ -63,10 +64,25 @@ const sacarSchema = z.object({
   description: z.string().trim().max(200).optional(),
 });
 
+async function assertSaldoParaSaque(userId: string, amount: number) {
+  const list = await db.listTransactionsForEmployee(userId);
+  const recebido = list
+    .filter((t) => (t.kind === "pagamento_funcionario" || t.kind === "deposito") && t.status === "pago")
+    .reduce((a, b) => a + b.amount, 0);
+  const sacado = list
+    .filter((t) => t.kind === "saque" && (t.status === "pago" || t.status === "pendente"))
+    .reduce((a, b) => a + b.amount, 0);
+  const disponivel = recebido - sacado;
+  if (amount > disponivel) {
+    throw new Error(`Saldo insuficiente. Disponível: R$ ${disponivel.toFixed(2)}`);
+  }
+}
+
 export const criarSaque = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => sacarSchema.parse(raw))
   .handler(async ({ data }) => {
-    await requireAdmin();
+    const s = await requireSession();
+    if (s.role !== "admin") await assertSaldoParaSaque(s.userId!, data.amount);
     const payout = await createPayout({
       amount: data.amount,
       pixKey: data.pixKey,
@@ -82,6 +98,7 @@ export const criarSaque = createServerFn({ method: "POST" })
       pixKey: data.pixKey,
       counterparty: data.keyType ?? data.beneficiaryName ?? "—",
       externalId: payout.externalId,
+      employeeId: s.role === "admin" ? undefined : s.userId!,
       paidAt: payout.status === "pago" ? new Date().toISOString() : undefined,
     });
     return { tx };
@@ -92,7 +109,7 @@ const qrDecodeSchema = z.object({ qrCode: z.string().trim().min(20) });
 export const decodificarQr = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => qrDecodeSchema.parse(raw))
   .handler(async ({ data }) => {
-    await requireAdmin();
+    await requireSession();
     return decodeQrCode(data.qrCode);
   });
 
@@ -105,7 +122,7 @@ const saqueQrSchema = z.object({
 export const criarSaqueQr = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => saqueQrSchema.parse(raw))
   .handler(async ({ data }) => {
-    await requireAdmin();
+    const s = await requireSession();
     let info: Awaited<ReturnType<typeof decodeQrCode>> | null = null;
     try {
       info = await decodeQrCode(data.qrCode);
@@ -114,6 +131,7 @@ export const criarSaqueQr = createServerFn({ method: "POST" })
     }
     const amount = info?.amount ?? data.amount;
     if (!amount || amount <= 0) throw new Error("Valor obrigatório para QR estático");
+    if (s.role !== "admin") await assertSaldoParaSaque(s.userId!, amount);
     const payout = await createPayoutByQr({
       qrCode: data.qrCode,
       amount: info?.amount ? undefined : data.amount,
@@ -127,6 +145,7 @@ export const criarSaqueQr = createServerFn({ method: "POST" })
       pixKey: info?.name ?? "QR Code",
       counterparty: info?.name ?? "QR",
       externalId: payout.externalId,
+      employeeId: s.role === "admin" ? undefined : s.userId!,
       paidAt: payout.status === "pago" ? new Date().toISOString() : undefined,
     });
     return { tx, info };
