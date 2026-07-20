@@ -74,8 +74,7 @@ export const excluirFuncionario = createServerFn({ method: "POST" })
     return { ok };
   });
 
-export const pagarTodos = createServerFn({ method: "POST" }).handler(async () => {
-  await requireAdmin();
+export async function executarPagamentoDiario(): Promise<{ total: number; results: Array<{ employeeId: string; ok: boolean; error?: string }> }> {
   const emps = (await db.listEmployees()).filter((e) => e.role === "funcionario" && e.active && e.dailyAmount && e.pixKey);
   const results: Array<{ employeeId: string; ok: boolean; error?: string }> = [];
   for (const e of emps) {
@@ -105,6 +104,11 @@ export const pagarTodos = createServerFn({ method: "POST" }).handler(async () =>
   const cfg = await db.getAutoPay();
   await db.setAutoPay({ ...cfg, lastRunAt: new Date().toISOString() });
   return { total: emps.length, results };
+}
+
+export const pagarTodos = createServerFn({ method: "POST" }).handler(async () => {
+  await requireAdmin();
+  return executarPagamentoDiario();
 });
 
 export const obterAutoPay = createServerFn({ method: "GET" }).handler(async () => {
