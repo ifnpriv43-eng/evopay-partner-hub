@@ -53,11 +53,8 @@ interface EvoPayTransaction {
   paidAt?: string | null;
   updatedAt?: string | null;
 }
-  status?: string;
-  endToEndId?: string | null;
-  paidAt?: string | null;
-  updatedAt?: string | null;
-}
+
+
 
 function mapStatus(s: string | undefined | null): "pendente" | "pago" | "expirado" | "falhou" {
   const v = (s ?? "").toUpperCase();
