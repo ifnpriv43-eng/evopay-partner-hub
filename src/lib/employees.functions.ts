@@ -76,7 +76,7 @@ export const excluirFuncionario = createServerFn({ method: "POST" })
 
 export const pagarTodos = createServerFn({ method: "POST" }).handler(async () => {
   await requireAdmin();
-  const emps = (await db.listEmployees()).filter((e) => e.active && e.dailyAmount && e.pixKey);
+  const emps = (await db.listEmployees()).filter((e) => e.role === "funcionario" && e.active && e.dailyAmount && e.pixKey);
   const results: Array<{ employeeId: string; ok: boolean; error?: string }> = [];
   for (const e of emps) {
     try {
