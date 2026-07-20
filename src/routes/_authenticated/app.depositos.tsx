@@ -30,7 +30,7 @@ function DepositosPage() {
 
   const list = useQuery({
     queryKey: ["txs", "deposito"],
-    queryFn: () => listarTransacoes({ data: { kind: "deposito", limit: 100 } }),
+    queryFn: () => listarTransacoes({ data: { kind: "deposito", limit: 5 } }),
     refetchInterval: (q) => (q.state.data?.some((t) => t.status === "pendente") ? 8000 : false),
   });
 

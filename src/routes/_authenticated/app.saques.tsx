@@ -48,7 +48,7 @@ function SaquesPage() {
 
   const list = useQuery({
     queryKey: ["txs", "saque"],
-    queryFn: () => listarTransacoes({ data: { kind: "saque", limit: 100 } }),
+    queryFn: () => listarTransacoes({ data: { kind: "saque", limit: 5 } }),
     refetchInterval: (q) => (q.state.data?.some((t) => t.status === "pendente") ? 8000 : false),
   });
 

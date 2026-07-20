@@ -27,7 +27,7 @@ function HistoricoPage() {
       data: {
         kind: kind === "todos" ? undefined : kind,
         status: status === "todos" ? undefined : status,
-        limit: 500,
+        limit: 5,
       },
     }),
   });

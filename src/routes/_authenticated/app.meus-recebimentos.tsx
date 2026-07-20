@@ -33,7 +33,7 @@ function MeusRecebimentosPage() {
   const [detail, setDetail] = useState<Transaction | null>(null);
   const list = useQuery({
     queryKey: ["my-txs"],
-    queryFn: () => listarTransacoes({ data: {} }),
+    queryFn: () => listarTransacoes({ data: { limit: 5 } }),
     refetchInterval: (q) => (q.state.data?.some((t) => t.status === "pendente") ? 8000 : false),
   });
   const saldo = useQuery({ queryKey: ["meu-saldo"], queryFn: () => meuSaldoFuncionario() });
