@@ -148,24 +148,52 @@ function DepositosPage() {
 
       <Dialog open={!!qr} onOpenChange={(o) => !o && setQr(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Pix gerado — {qr && brl(qr.amount)}</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            {qr?.qrImage && (
-              <div className="flex justify-center">
-                <img src={qr.qrImage} alt="QR Code Pix" className="rounded-lg bg-white p-2 w-56 h-56" />
+          <DialogHeader>
+            <DialogTitle>
+              {paid ? `Pagamento aprovado — ${qr && brl(qr.amount)}` : `Pix gerado — ${qr && brl(qr.amount)}`}
+            </DialogTitle>
+          </DialogHeader>
+          {paid ? (
+            <div className="flex flex-col items-center gap-4 py-6 text-center">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-full bg-success/20 blur-2xl animate-pulse" />
+                <div className="relative rounded-full bg-success/15 p-6 border-2 border-success/40">
+                  <CheckCircle2 className="h-16 w-16 text-success animate-in zoom-in duration-500" />
+                </div>
               </div>
-            )}
-            <div className="rounded-lg bg-muted p-4">
-              <Label className="text-xs">Código copia e cola</Label>
-              <div className="mt-2 flex gap-2">
-                <code className="flex-1 text-xs break-all bg-background rounded px-2 py-1.5">{qr?.qrCode}</code>
-                <Button size="icon" variant="outline" onClick={() => { navigator.clipboard.writeText(qr?.qrCode ?? ""); toast.success("Copiado"); }}>
-                  <Copy className="h-4 w-4" />
-                </Button>
+              <div className="space-y-1">
+                <p className="text-2xl font-bold flex items-center justify-center gap-2">
+                  <PartyPopper className="h-5 w-5 text-success" /> Pagamento confirmado!
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {qr && brl(qr.amount)} creditado no seu saldo.
+                </p>
               </div>
+              <Button onClick={() => setQr(null)} className="gradient-primary text-primary-foreground w-full">
+                Fechar
+              </Button>
             </div>
-            <p className="text-xs text-muted-foreground">O status é atualizado automaticamente a cada poucos segundos.</p>
-          </div>
+          ) : (
+            <div className="space-y-4">
+              {qr?.qrImage && (
+                <div className="flex justify-center">
+                  <img src={qr.qrImage} alt="QR Code Pix" className="rounded-lg bg-white p-2 w-56 h-56" />
+                </div>
+              )}
+              <div className="rounded-lg bg-muted p-4">
+                <Label className="text-xs">Código copia e cola</Label>
+                <div className="mt-2 flex gap-2">
+                  <code className="flex-1 text-xs break-all bg-background rounded px-2 py-1.5">{qr?.qrCode}</code>
+                  <Button size="icon" variant="outline" onClick={() => { navigator.clipboard.writeText(qr?.qrCode ?? ""); toast.success("Copiado"); }}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground flex items-center gap-2">
+                <Loader2 className="h-3 w-3 animate-spin" /> Aguardando pagamento… o status atualiza sozinho.
+              </p>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
