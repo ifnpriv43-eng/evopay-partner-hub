@@ -98,6 +98,7 @@ function DepositosPage() {
             )}
           </tbody>
         </table>
+        </div>
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -130,6 +131,11 @@ function DepositosPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Pix gerado — {qr && brl(qr.amount)}</DialogTitle></DialogHeader>
           <div className="space-y-4">
+            {qr?.qrImage && (
+              <div className="flex justify-center">
+                <img src={qr.qrImage} alt="QR Code Pix" className="rounded-lg bg-white p-2 w-56 h-56" />
+              </div>
+            )}
             <div className="rounded-lg bg-muted p-4">
               <Label className="text-xs">Código copia e cola</Label>
               <div className="mt-2 flex gap-2">
