@@ -128,8 +128,8 @@ export const criarSaqueQr = createServerFn({ method: "POST" })
     });
     return { tx, info };
   });
-    return { tx };
-  });
+
+
 
 export const consultarSaldo = createServerFn({ method: "GET" }).handler(async () => {
   // Saldo do gateway é sensível — só admin
