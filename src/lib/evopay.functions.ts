@@ -161,7 +161,36 @@ export const consultarSaldo = createServerFn({ method: "GET" }).handler(async ()
 
 export const meuSaldoFuncionario = createServerFn({ method: "GET" }).handler(async () => {
   const s = await requireSession();
-  const list = await db.listTransactionsForEmployee(s.userId!);
+  const user = await db.getUserById(s.userId!);
+  const rawList = await db.listTransactionsForEmployee(s.userId!);
+  const synced = await Promise.all(
+    rawList.map(async (t) => {
+      if (t.status !== "pendente" || !t.externalId || (t.kind !== "saque" && t.kind !== "pagamento_funcionario")) return t;
+      const remote = await getWithdrawStatus(t.externalId);
+      if (!remote || remote.status === t.status) return t;
+      return (
+        (await db.updateTransaction(t.id, {
+          status: remote.status,
+          paidAt: remote.status === "pago" ? remote.paidAt ?? new Date().toISOString() : t.paidAt,
+        })) ?? t
+      );
+    }),
+  );
+  const list = synced;
+  const hojeBrasilia = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const temDiariaHoje = list.some(
+    (t) =>
+      t.kind === "pagamento_funcionario" &&
+      (t.status === "pago" || t.status === "pendente") &&
+      (t.paidAt ?? t.createdAt).slice(0, 10) === hojeBrasilia,
+  );
+  const diariaAReceber =
+    user?.role === "funcionario" && user.active && !temDiariaHoje ? Math.max(0, user.dailyAmount ?? 0) : 0;
   const recebido = list
     .filter((t) => (t.kind === "pagamento_funcionario" || t.kind === "deposito") && t.status === "pago")
     .reduce((a, b) => a + b.amount, 0);
@@ -171,7 +200,7 @@ export const meuSaldoFuncionario = createServerFn({ method: "GET" }).handler(asy
   const sacado = list
     .filter((t) => t.kind === "saque" && (t.status === "pago" || t.status === "pendente"))
     .reduce((a, b) => a + b.amount, 0);
-  return { recebido, pendente, sacado, disponivel: Math.max(0, recebido - sacado) };
+  return { recebido, pendente: pendente + diariaAReceber, sacado, disponivel: Math.max(0, recebido - sacado), diariaAReceber };
 });
 
 const meuSaqueSchema = z.object({

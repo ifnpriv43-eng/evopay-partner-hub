@@ -43,6 +43,13 @@ function FuncionariosPage() {
     mutationFn: (v: { enabled: boolean; hour: number; minute: number }) => salvarAutoPay({ data: v }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["autopay"] }); toast.success("Automação salva"); },
   });
+  const autoTime = formatTime(auto.data?.hour ?? 9, auto.data?.minute ?? 0);
+
+  function updateAutoTime(value: string) {
+    const parsed = parseTime(value);
+    if (!parsed) return;
+    saveAuto.mutate({ enabled: auto.data?.enabled ?? false, hour: parsed.hour, minute: parsed.minute });
+  }
 
   return (
     <div className="space-y-6">
@@ -93,13 +100,14 @@ function FuncionariosPage() {
               checked={auto.data?.enabled ?? false}
               onCheckedChange={(v) => saveAuto.mutate({ enabled: v, hour: auto.data?.hour ?? 9, minute: auto.data?.minute ?? 0 })}
             />
-            <Input type="number" min={0} max={23} value={auto.data?.hour ?? 9}
-              onChange={(e) => saveAuto.mutate({ enabled: auto.data?.enabled ?? false, hour: parseInt(e.target.value) || 0, minute: auto.data?.minute ?? 0 })}
-              className="w-20" />
-            <span>:</span>
-            <Input type="number" min={0} max={59} value={auto.data?.minute ?? 0}
-              onChange={(e) => saveAuto.mutate({ enabled: auto.data?.enabled ?? false, hour: auto.data?.hour ?? 9, minute: parseInt(e.target.value) || 0 })}
-              className="w-20" />
+            <Input
+              type="time"
+              value={autoTime}
+              onChange={(e) => updateAutoTime(e.target.value)}
+              className="w-32"
+              aria-label="Horário do pagamento automático"
+            />
+            <span className="text-xs text-muted-foreground">Brasília</span>
           </div>
           {auto.data?.lastRunAt && (
             <p className="text-xs text-muted-foreground mt-3">Última execução: {new Date(auto.data.lastRunAt).toLocaleString("pt-BR")}</p>
@@ -157,6 +165,21 @@ function FuncionariosPage() {
       {editing && <EditEmployeeDialog employee={editing} open={!!editing} onOpenChange={(o) => !o && setEditing(null)} />}
     </div>
   );
+}
+
+function formatTime(hour: number, minute: number) {
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function parseTime(value: string): { hour: number; minute: number } | null {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    return null;
+  }
+  return { hour, minute };
 }
 
 function DeleteBtn({ id, name }: { id: string; name: string }) {
