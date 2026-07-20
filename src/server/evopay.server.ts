@@ -1,9 +1,8 @@
-// EvoPay HTTP wrapper. When EVOPAY_TOKEN is set, calls the real gateway;
-// otherwise returns realistic mock data so the UI is fully explorable in
-// the Lovable preview. See https://docs.partners.evopay.cash/llms-full.txt
+// EvoPay HTTP wrapper. Real API: https://api.evopay.cash/v1
+// Docs: https://docs.partners.evopay.cash/llms-full.txt
 import QRCode from "qrcode";
 
-const BASE = process.env.EVOPAY_BASE_URL ?? "https://api.partners.evopay.cash";
+const BASE = process.env.EVOPAY_BASE_URL ?? "https://api.evopay.cash/v1";
 const TOKEN = process.env.EVOPAY_TOKEN;
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -16,11 +15,16 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...(init.headers ?? {}),
     },
   });
+  const text = await res.text();
   if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`EvoPay ${res.status}: ${body.slice(0, 200)}`);
+    let msg = text.slice(0, 300);
+    try {
+      const j = JSON.parse(text) as { message?: string; error?: string };
+      msg = j.message ?? j.error ?? msg;
+    } catch {}
+    throw new Error(`EvoPay ${res.status}: ${msg}`);
   }
-  return (await res.json()) as T;
+  return (text ? JSON.parse(text) : {}) as T;
 }
 
 export interface CreatePixInput {
@@ -37,41 +41,64 @@ export interface CreatePixResult {
   expiresAt?: string;
 }
 
+interface EvoPayTransaction {
+  id: string;
+  qrCodeText?: string | null;
+  qrCodeBase64?: string | null;
+  qrCodeUrl?: string | null;
+  status?: string;
+}
+
 export async function createPix(input: CreatePixInput): Promise<CreatePixResult> {
   if (!TOKEN) {
-    // Mock — fully functional UX in preview
     const id = `mock_${Date.now().toString(36)}`;
     const qrCode = `00020126580014BR.GOV.BCB.PIX0136${id}5204000053039865802BR5913EvoPayMock6009SaoPaulo62070503***6304ABCD`;
     const qrImage = await QRCode.toDataURL(qrCode, { margin: 1, width: 320 });
-    return {
-      externalId: id,
-      qrCode,
-      qrImage,
-      expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-    };
+    return { externalId: id, qrCode, qrImage, expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString() };
   }
-  const result = await call<CreatePixResult>("/v1/charges", {
+  const body: Record<string, unknown> = {
+    amount: Number(input.amount.toFixed(2)),
+    clientReference: input.description?.slice(0, 80),
+  };
+  if (input.payerName) body.generatedName = input.payerName;
+  if (input.payerDocument) body.generatedDocument = input.payerDocument.replace(/\D/g, "");
+
+  const tx = await call<EvoPayTransaction>("/pix/", {
     method: "POST",
-    body: JSON.stringify({
-      amount_cents: Math.round(input.amount * 100),
-      description: input.description,
-      payer: {
-        name: input.payerName,
-        document: input.payerDocument,
-      },
-    }),
+    body: JSON.stringify(body),
   });
-  // Always ensure a rendered QR image is available for the UI.
-  if (result.qrCode && !result.qrImage) {
-    result.qrImage = await QRCode.toDataURL(result.qrCode, { margin: 1, width: 320 });
+  const qrCode = tx.qrCodeText ?? "";
+  let qrImage: string | undefined;
+  if (tx.qrCodeBase64) {
+    qrImage = tx.qrCodeBase64.startsWith("data:") ? tx.qrCodeBase64 : `data:image/png;base64,${tx.qrCodeBase64}`;
+  } else if (qrCode) {
+    qrImage = await QRCode.toDataURL(qrCode, { margin: 1, width: 320 });
   }
-  return result;
+  return { externalId: tx.id, qrCode, qrImage };
+}
+
+type UiKeyType = "cpf" | "cnpj" | "email" | "telefone" | "aleatoria";
+type ApiPixType = "cpf" | "cnpj" | "email" | "phone" | "evp";
+
+function mapKeyType(t: UiKeyType | undefined, key: string): ApiPixType {
+  if (t === "telefone") return "phone";
+  if (t === "aleatoria") return "evp";
+  if (t === "cpf" || t === "cnpj" || t === "email") return t;
+  // fallback autodetect
+  const k = key.trim();
+  if (/^\S+@\S+\.\S+$/.test(k)) return "email";
+  const digits = k.replace(/\D/g, "");
+  if (digits.length === 11 && !k.startsWith("+")) return "cpf";
+  if (digits.length === 14) return "cnpj";
+  if (k.startsWith("+") || digits.length >= 10) return "phone";
+  return "evp";
 }
 
 export interface PayoutInput {
   amount: number;
   pixKey: string;
-  beneficiaryName: string;
+  keyType?: UiKeyType;
+  beneficiaryName?: string;
   description?: string;
 }
 export interface PayoutResult {
@@ -83,18 +110,24 @@ export async function createPayout(input: PayoutInput): Promise<PayoutResult> {
   if (!TOKEN) {
     return { externalId: `mock_out_${Date.now().toString(36)}`, status: "pago" };
   }
-  const res = await call<{ id: string; status: string }>("/v1/payouts", {
+  const pixType = mapKeyType(input.keyType, input.pixKey);
+  const pixKey =
+    pixType === "cpf" || pixType === "cnpj"
+      ? input.pixKey.replace(/\D/g, "")
+      : input.pixKey.trim();
+  const tx = await call<EvoPayTransaction>("/withdraw/", {
     method: "POST",
     body: JSON.stringify({
-      amount_cents: Math.round(input.amount * 100),
-      pix_key: input.pixKey,
-      beneficiary_name: input.beneficiaryName,
+      amount: Number(input.amount.toFixed(2)),
+      pixKey,
+      pixType,
       description: input.description,
     }),
   });
+  const s = (tx.status ?? "PENDING").toUpperCase();
   return {
-    externalId: res.id,
-    status: (res.status === "paid" ? "pago" : res.status === "failed" ? "falhou" : "pendente"),
+    externalId: tx.id,
+    status: s === "COMPLETED" ? "pago" : s === "CANCELED" || s === "ERROR" || s === "EXPIRED" ? "falhou" : "pendente",
   };
 }
 
@@ -103,13 +136,10 @@ export async function getBalance(): Promise<{ available: number; pending: number
     return { available: 12480.55, pending: 1300 };
   }
   try {
-    const res = await call<{ available_cents: number; pending_cents: number }>("/v1/balance");
-    return {
-      available: res.available_cents / 100,
-      pending: res.pending_cents / 100,
-    };
+    const res = await call<{ balanceAvailable: number; balanceBlocked: number }>("/user/balance");
+    return { available: res.balanceAvailable ?? 0, pending: res.balanceBlocked ?? 0 };
   } catch (err) {
-    console.error("[evopay] getBalance failed, returning zeros:", err);
+    console.error("[evopay] getBalance failed:", err);
     return { available: 0, pending: 0 };
   }
 }

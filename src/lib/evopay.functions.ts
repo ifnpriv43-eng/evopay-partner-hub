@@ -49,7 +49,13 @@ export const criarSaque = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => sacarSchema.parse(raw))
   .handler(async ({ data }) => {
     await requireAdmin();
-    const payout = await createPayout({ ...data, beneficiaryName: data.beneficiaryName ?? "—" });
+    const payout = await createPayout({
+      amount: data.amount,
+      pixKey: data.pixKey,
+      keyType: data.keyType,
+      beneficiaryName: data.beneficiaryName ?? "—",
+      description: data.description,
+    });
     const tx = await db.createTransaction({
       kind: "saque",
       status: payout.status,
