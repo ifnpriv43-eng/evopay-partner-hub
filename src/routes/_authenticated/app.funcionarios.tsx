@@ -116,6 +116,7 @@ function FuncionariosPage() {
           <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
             <tr>
               <th className="text-left py-3 px-4 font-medium">Nome</th>
+              <th className="text-left py-3 px-4 font-medium">Tipo</th>
               <th className="text-left py-3 px-4 font-medium">E-mail</th>
               <th className="text-left py-3 px-4 font-medium">Chave Pix</th>
               <th className="text-right py-3 px-4 font-medium">Diária</th>
@@ -127,9 +128,14 @@ function FuncionariosPage() {
             {(list.data ?? []).map((e) => (
               <tr key={e.id}>
                 <td className="py-3 px-4 font-medium">{e.name}</td>
+                <td className="py-3 px-4">
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] uppercase font-semibold ${e.role === "cliente" ? "bg-blue-500/15 text-blue-400" : "bg-primary/15 text-primary"}`}>
+                    {e.role === "cliente" ? "Cliente" : "Funcionário"}
+                  </span>
+                </td>
                 <td className="py-3 px-4 text-muted-foreground">{e.email}</td>
                 <td className="py-3 px-4 text-muted-foreground font-mono text-xs">{e.pixKey}</td>
-                <td className="py-3 px-4 text-right font-mono">{brl(e.dailyAmount ?? 0)}</td>
+                <td className="py-3 px-4 text-right font-mono">{e.role === "cliente" ? "—" : brl(e.dailyAmount ?? 0)}</td>
                 <td className="py-3 px-4 text-center">
                   <span className={`inline-block h-2 w-2 rounded-full ${e.active ? "bg-success" : "bg-muted-foreground"}`} />
                 </td>
@@ -140,7 +146,7 @@ function FuncionariosPage() {
               </tr>
             ))}
             {(!list.data || list.data.length === 0) && (
-              <tr><td colSpan={6} className="text-center text-muted-foreground py-8">Nenhum funcionário cadastrado.</td></tr>
+              <tr><td colSpan={7} className="text-center text-muted-foreground py-8">Nenhum cadastro.</td></tr>
             )}
           </tbody>
         </table>
