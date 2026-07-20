@@ -137,7 +137,7 @@ function SaquesPage() {
         <Card className="p-6 h-fit">
           <h2 className="font-semibold flex items-center gap-2"><ArrowUpFromLine className="h-4 w-4 text-primary" /> Novo saque</h2>
 
-          <Tabs defaultValue="chave" className="mt-4">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as "chave" | "qr")} className="mt-4">
             <TabsList className="grid grid-cols-2 w-full">
               <TabsTrigger value="chave">Chave</TabsTrigger>
               <TabsTrigger value="qr">QR / Copia‑cola</TabsTrigger>
@@ -170,18 +170,21 @@ function SaquesPage() {
                 placeholder="Cole aqui o código Pix copia‑e‑cola…"
                 className="min-h-[100px] font-mono text-xs"
               />
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => processBrCode(brCode)} disabled={!brCode.trim()}>
-                  <ScanLine className="h-4 w-4 mr-1" /> Ler código
-                </Button>
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setScanOpen(true)}>
-                  <Camera className="h-4 w-4 mr-1" /> Câmera
-                </Button>
-              </div>
-              {pixKey && (
+              <Button type="button" variant="outline" className="w-full" onClick={() => setScanOpen(true)}>
+                <Camera className="h-4 w-4 mr-1" /> Escanear com câmera
+              </Button>
+              {decoding && (
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Lendo QR…
+                </div>
+              )}
+              {qrInfo && (
                 <div className="rounded-lg bg-muted/40 p-3 text-xs space-y-1">
+                  <div className="flex items-center gap-1 text-primary">
+                    <CheckCircle2 className="h-3 w-3" /> QR {qrInfo.dynamic ? "dinâmico" : "estático"} reconhecido
+                  </div>
                   {merchant && <div><span className="text-muted-foreground">Recebedor:</span> {merchant}</div>}
-                  <div className="font-mono break-all"><span className="text-muted-foreground">Chave:</span> {pixKey}</div>
+                  {qrInfo.amount && <div><span className="text-muted-foreground">Valor:</span> {brl(qrInfo.amount)}</div>}
                 </div>
               )}
             </TabsContent>
@@ -189,14 +192,24 @@ function SaquesPage() {
 
           <form onSubmit={(e) => { e.preventDefault(); create.mutate(); }} className="mt-4 space-y-4">
             <div className="space-y-2">
-              <Label>Valor (R$)</Label>
-              <Input type="number" step="0.01" min="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <Label>Valor (R$) {qrInfo?.dynamic && <span className="text-xs text-muted-foreground">(definido pelo QR)</span>}</Label>
+              <Input
+                type="number" step="0.01" min="0.01"
+                required={!qrInfo?.dynamic}
+                disabled={!!qrInfo?.dynamic}
+                value={qrInfo?.dynamic && qrInfo.amount ? String(qrInfo.amount) : amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label>Descrição (opcional)</Label>
               <Input value={desc} onChange={(e) => setDesc(e.target.value)} />
             </div>
-            <Button type="submit" disabled={create.isPending || !pixKey} className="w-full gradient-primary text-primary-foreground">
+            <Button
+              type="submit"
+              disabled={create.isPending || (tab === "chave" ? !pixKey : !brCode.trim())}
+              className="w-full gradient-primary text-primary-foreground"
+            >
               {create.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar Pix"}
             </Button>
           </form>
