@@ -24,6 +24,8 @@ const adminItems = [
 
 const employeeItems = [
   { title: "Meus recebimentos", url: "/app/meus-recebimentos", icon: Wallet },
+  { title: "Depósitos", url: "/app/depositos", icon: ArrowDownToLine },
+  { title: "Saques", url: "/app/saques", icon: ArrowUpFromLine },
   { title: "Histórico", url: "/app/historico", icon: History },
   { title: "API & Docs", url: "/app/api", icon: Code2 },
 ];
