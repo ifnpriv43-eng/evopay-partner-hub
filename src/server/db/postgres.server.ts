@@ -2,6 +2,7 @@
 // Usa a mesma forma de "app_users / app_transactions / app_config" das migrations,
 // mas contra um Postgres que você mesmo hospeda.
 import type postgres from "postgres";
+import type { AutoPayConfig, DataStore, Transaction, TxKind, TxStatus, User, UserRole } from "./schema";
 import { getSql } from "./pg.server";
 
 function uid(prefix = "id") {
