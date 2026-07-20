@@ -22,7 +22,7 @@ function DepositosPage() {
   const [amount, setAmount] = useState("");
   const [desc, setDesc] = useState("");
   const [payer, setPayer] = useState("");
-  const [qr, setQr] = useState<{ qrCode: string; amount: number } | null>(null);
+  const [qr, setQr] = useState<{ qrCode: string; qrImage?: string; amount: number } | null>(null);
 
   const list = useQuery({
     queryKey: ["txs", "deposito"],
@@ -32,7 +32,7 @@ function DepositosPage() {
   const create = useMutation({
     mutationFn: () => criarDeposito({ data: { amount: parseFloat(amount), description: desc || "Cobrança Pix", payerName: payer || undefined } }),
     onSuccess: (res) => {
-      setQr({ qrCode: res.qrCode, amount: parseFloat(amount) });
+      setQr({ qrCode: res.qrCode, qrImage: res.qrImage, amount: parseFloat(amount) });
       setOpen(false);
       setAmount(""); setDesc(""); setPayer("");
       qc.invalidateQueries({ queryKey: ["txs"] });
@@ -64,7 +64,8 @@ function DepositosPage() {
       </div>
 
       <Card className="p-0 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="w-full overflow-x-auto">
+        <table className="w-full text-sm min-w-[720px]">
           <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
             <tr>
               <th className="text-left py-3 px-4 font-medium">Descrição</th>
