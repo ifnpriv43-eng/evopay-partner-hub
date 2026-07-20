@@ -102,7 +102,8 @@ function HistoricoPage() {
       </Card>
 
       <Card className="p-0 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="w-full overflow-x-auto">
+        <table className="w-full text-sm min-w-[800px]">
           <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
             <tr>
               <th className="text-left py-3 px-4 font-medium">Data</th>
@@ -131,6 +132,7 @@ function HistoricoPage() {
             )}
           </tbody>
         </table>
+        </div>
       </Card>
     </div>
   );
