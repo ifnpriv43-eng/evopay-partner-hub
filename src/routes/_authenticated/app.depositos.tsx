@@ -22,7 +22,7 @@ function DepositosPage() {
   const [amount, setAmount] = useState("");
   const [desc, setDesc] = useState("");
   const [payer, setPayer] = useState("");
-  const [qr, setQr] = useState<{ qrCode: string; amount: number } | null>(null);
+  const [qr, setQr] = useState<{ qrCode: string; qrImage?: string; amount: number } | null>(null);
 
   const list = useQuery({
     queryKey: ["txs", "deposito"],
@@ -32,7 +32,7 @@ function DepositosPage() {
   const create = useMutation({
     mutationFn: () => criarDeposito({ data: { amount: parseFloat(amount), description: desc || "Cobrança Pix", payerName: payer || undefined } }),
     onSuccess: (res) => {
-      setQr({ qrCode: res.qrCode, amount: parseFloat(amount) });
+      setQr({ qrCode: res.qrCode, qrImage: res.qrImage, amount: parseFloat(amount) });
       setOpen(false);
       setAmount(""); setDesc(""); setPayer("");
       qc.invalidateQueries({ queryKey: ["txs"] });
@@ -64,7 +64,8 @@ function DepositosPage() {
       </div>
 
       <Card className="p-0 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="w-full overflow-x-auto">
+        <table className="w-full text-sm min-w-[720px]">
           <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
             <tr>
               <th className="text-left py-3 px-4 font-medium">Descrição</th>
@@ -97,6 +98,7 @@ function DepositosPage() {
             )}
           </tbody>
         </table>
+        </div>
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -129,6 +131,11 @@ function DepositosPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>Pix gerado — {qr && brl(qr.amount)}</DialogTitle></DialogHeader>
           <div className="space-y-4">
+            {qr?.qrImage && (
+              <div className="flex justify-center">
+                <img src={qr.qrImage} alt="QR Code Pix" className="rounded-lg bg-white p-2 w-56 h-56" />
+              </div>
+            )}
             <div className="rounded-lg bg-muted p-4">
               <Label className="text-xs">Código copia e cola</Label>
               <div className="mt-2 flex gap-2">

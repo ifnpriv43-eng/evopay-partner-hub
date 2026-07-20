@@ -1,6 +1,7 @@
 // EvoPay HTTP wrapper. When EVOPAY_TOKEN is set, calls the real gateway;
 // otherwise returns realistic mock data so the UI is fully explorable in
 // the Lovable preview. See https://docs.partners.evopay.cash/llms-full.txt
+import QRCode from "qrcode";
 
 const BASE = process.env.EVOPAY_BASE_URL ?? "https://api.partners.evopay.cash";
 const TOKEN = process.env.EVOPAY_TOKEN;
@@ -40,14 +41,16 @@ export async function createPix(input: CreatePixInput): Promise<CreatePixResult>
   if (!TOKEN) {
     // Mock — fully functional UX in preview
     const id = `mock_${Date.now().toString(36)}`;
+    const qrCode = `00020126580014BR.GOV.BCB.PIX0136${id}5204000053039865802BR5913EvoPayMock6009SaoPaulo62070503***6304ABCD`;
+    const qrImage = await QRCode.toDataURL(qrCode, { margin: 1, width: 320 });
     return {
       externalId: id,
-      qrCode: `00020126580014BR.GOV.BCB.PIX0136${id}5204000053039865802BR5913EvoPayMock6009SaoPaulo62070503***6304ABCD`,
-      qrImage: undefined,
+      qrCode,
+      qrImage,
       expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
     };
   }
-  return call<CreatePixResult>("/v1/charges", {
+  const result = await call<CreatePixResult>("/v1/charges", {
     method: "POST",
     body: JSON.stringify({
       amount_cents: Math.round(input.amount * 100),
@@ -58,6 +61,11 @@ export async function createPix(input: CreatePixInput): Promise<CreatePixResult>
       },
     }),
   });
+  // Always ensure a rendered QR image is available for the UI.
+  if (result.qrCode && !result.qrImage) {
+    result.qrImage = await QRCode.toDataURL(result.qrCode, { margin: 1, width: 320 });
+  }
+  return result;
 }
 
 export interface PayoutInput {

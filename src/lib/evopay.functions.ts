@@ -40,7 +40,8 @@ export const criarDeposito = createServerFn({ method: "POST" })
 const sacarSchema = z.object({
   amount: z.number().positive().max(100000),
   pixKey: z.string().trim().min(3).max(200),
-  beneficiaryName: z.string().trim().min(2).max(120),
+  keyType: z.enum(["cpf", "cnpj", "email", "telefone", "aleatoria"]).optional(),
+  beneficiaryName: z.string().trim().max(120).optional(),
   description: z.string().trim().max(200).optional(),
 });
 
@@ -48,14 +49,14 @@ export const criarSaque = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => sacarSchema.parse(raw))
   .handler(async ({ data }) => {
     await requireAdmin();
-    const payout = await createPayout(data);
+    const payout = await createPayout({ ...data, beneficiaryName: data.beneficiaryName ?? "—" });
     const tx = await db.createTransaction({
       kind: "saque",
       status: payout.status,
       amount: data.amount,
       description: data.description ?? "Saque",
       pixKey: data.pixKey,
-      counterparty: data.beneficiaryName,
+      counterparty: data.keyType ?? data.beneficiaryName ?? "—",
       externalId: payout.externalId,
       paidAt: payout.status === "pago" ? new Date().toISOString() : undefined,
     });
