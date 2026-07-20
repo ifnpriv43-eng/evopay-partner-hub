@@ -111,7 +111,8 @@ function FuncionariosPage() {
       </div>
 
       <Card className="p-0 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="w-full overflow-x-auto">
+        <table className="w-full text-sm min-w-[760px]">
           <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
             <tr>
               <th className="text-left py-3 px-4 font-medium">Nome</th>
@@ -143,6 +144,7 @@ function FuncionariosPage() {
             )}
           </tbody>
         </table>
+        </div>
       </Card>
 
       <NewEmployeeDialog open={openNew} onOpenChange={setOpenNew} />
