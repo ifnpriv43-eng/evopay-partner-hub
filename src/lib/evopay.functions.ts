@@ -4,6 +4,8 @@ import { db } from "@/server/db";
 import {
   createPix,
   createPayout,
+  createPayoutByQr,
+  decodeQrCode,
   getBalance,
   getPixStatus,
   getWithdrawStatus,
