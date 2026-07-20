@@ -74,11 +74,6 @@ function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
-            <p className="font-medium text-foreground">Credenciais de demonstração:</p>
-            <p>Admin: <code>admin@evopay.local</code> / <code>admin123</code></p>
-            <p>Funcionário: <code>maria@evopay.local</code> / <code>maria123</code></p>
-          </div>
         </div>
       </div>
     </div>
