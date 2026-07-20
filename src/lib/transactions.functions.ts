@@ -2,7 +2,28 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { db } from "@/server/db";
 import { getSessionData } from "./session.server";
-import type { TxKind, TxStatus } from "@/server/db/schema";
+import { getPixStatus, getWithdrawStatus } from "@/server/evopay.server";
+import type { Transaction, TxKind, TxStatus } from "@/server/db/schema";
+
+async function syncPending(rows: Transaction[]): Promise<Transaction[]> {
+  const pend = rows.filter((t) => t.status === "pendente" && t.externalId && (t.kind === "deposito" || t.kind === "saque"));
+  if (!pend.length) return rows;
+  const updates = await Promise.all(pend.map(async (t) => {
+    try {
+      const remote = t.kind === "deposito"
+        ? await getPixStatus(t.externalId!)
+        : await getWithdrawStatus(t.externalId!);
+      if (!remote || remote.status === t.status) return null;
+      return db.updateTransaction(t.id, {
+        status: remote.status,
+        paidAt: remote.status === "pago" ? (remote.paidAt ?? new Date().toISOString()) : t.paidAt,
+      });
+    } catch { return null; }
+  }));
+  const map = new Map<string, Transaction>();
+  for (const u of updates) if (u) map.set(u.id, u);
+  return rows.map((r) => map.get(r.id) ?? r);
+}
 
 async function requireSession() {
   const session = await getSessionData();
