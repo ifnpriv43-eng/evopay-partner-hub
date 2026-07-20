@@ -18,7 +18,7 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
 });
 
 const evopaySessionMiddleware = createMiddleware({ type: "function" }).client(async ({ next }) => {
-  const token = window.localStorage.getItem("evopay-session-token");
+  const token = typeof window !== "undefined" ? window.localStorage.getItem("evopay-session-token") : null;
   return next({
     headers: token ? { "x-evopay-session": token } : undefined,
   });
