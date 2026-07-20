@@ -42,6 +42,17 @@ export interface CreatePixResult {
   amount: number;
 }
 
+function makeClientReference(description: string | undefined): string {
+  const base = (description?.trim() || "deposito")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 36) || "deposito";
+  const unique = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  return `${base}-${unique}`.slice(0, 80);
+}
+
 interface EvoPayTransaction {
   id: string;
   amount?: number;
@@ -73,7 +84,9 @@ export async function createPix(input: CreatePixInput): Promise<CreatePixResult>
   }
   const body: Record<string, unknown> = {
     amount: Number(input.amount.toFixed(2)),
-    clientReference: input.description?.slice(0, 80),
+    // EvoPay can reuse/return an existing pending charge when clientReference repeats.
+    // Always send a unique reference so a new R$10 charge never receives an old R$20 QR.
+    clientReference: makeClientReference(input.description),
   };
   if (input.payerName) body.generatedName = input.payerName;
   if (input.payerDocument) body.generatedDocument = input.payerDocument.replace(/\D/g, "");
