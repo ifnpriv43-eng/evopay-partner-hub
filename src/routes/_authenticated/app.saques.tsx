@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { criarSaque } from "@/lib/evopay.functions";
+import { useEffect, useState } from "react";
+import { criarSaque, criarSaqueQr, decodificarQr } from "@/lib/evopay.functions";
 import { listarTransacoes } from "@/lib/transactions.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { StatusBadge, brl } from "@/components/tx-helpers";
 import { TransactionDetailDialog } from "@/components/transaction-detail-dialog";
 import { QrScanner } from "@/components/qr-scanner";
 import { parsePixBrCode } from "@/lib/pix-emv";
-import { Loader2, ArrowUpFromLine, Camera, ScanLine, Eye } from "lucide-react";
+import { Loader2, ArrowUpFromLine, Camera, Eye, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Transaction } from "@/server/db/schema";
 
@@ -42,6 +42,9 @@ function SaquesPage() {
   const [scanOpen, setScanOpen] = useState(false);
   const [detail, setDetail] = useState<Transaction | null>(null);
   const [merchant, setMerchant] = useState<string | null>(null);
+  const [qrInfo, setQrInfo] = useState<{ dynamic: boolean; amount?: number; name?: string } | null>(null);
+  const [tab, setTab] = useState<"chave" | "qr">("chave");
+  const [decoding, setDecoding] = useState(false);
 
   const list = useQuery({
     queryKey: ["txs", "saque"],
@@ -50,17 +53,28 @@ function SaquesPage() {
   });
 
   const create = useMutation({
-    mutationFn: () => criarSaque({
-      data: {
-        amount: parseFloat(amount),
-        pixKey,
-        keyType,
-        beneficiaryName: "—",
-        description: desc || undefined,
-      },
-    }),
+    mutationFn: async () => {
+      if (tab === "qr") {
+        return criarSaqueQr({
+          data: {
+            qrCode: brCode.trim(),
+            amount: qrInfo?.dynamic ? undefined : parseFloat(amount),
+            description: desc || undefined,
+          },
+        });
+      }
+      return criarSaque({
+        data: {
+          amount: parseFloat(amount),
+          pixKey,
+          keyType,
+          beneficiaryName: "—",
+          description: desc || undefined,
+        },
+      });
+    },
     onSuccess: () => {
-      setAmount(""); setPixKey(""); setDesc(""); setBrCode(""); setMerchant(null);
+      setAmount(""); setPixKey(""); setDesc(""); setBrCode(""); setMerchant(null); setQrInfo(null);
       qc.invalidateQueries({ queryKey: ["txs"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["saldo"] });
@@ -69,19 +83,47 @@ function SaquesPage() {
     onError: (e) => toast.error((e as Error).message),
   });
 
-  function processBrCode(text: string) {
-    const parsed = parsePixBrCode(text);
-    if (!parsed || !parsed.pixKey) {
-      toast.error("QR Pix inválido — não consegui extrair a chave");
+  // Auto-decodifica o QR conforme o texto muda (debounced).
+  useEffect(() => {
+    const code = brCode.trim();
+    if (!code || code.length < 20) {
+      setQrInfo(null);
+      setMerchant(null);
       return;
     }
-    setPixKey(parsed.pixKey);
-    if (parsed.keyType) setKeyType(parsed.keyType);
-    if (parsed.amount) setAmount(String(parsed.amount));
-    if (parsed.description) setDesc(parsed.description);
-    setMerchant(parsed.merchantName ?? null);
+    const parsed = parsePixBrCode(code);
+    if (parsed?.pixKey) {
+      setPixKey(parsed.pixKey);
+      if (parsed.keyType) setKeyType(parsed.keyType);
+      if (parsed.amount) setAmount(String(parsed.amount));
+      if (parsed.description) setDesc(parsed.description);
+      setMerchant(parsed.merchantName ?? null);
+      setQrInfo({ dynamic: false, amount: parsed.amount, name: parsed.merchantName });
+      return;
+    }
+    // QR dinâmico ou não parseável localmente — pergunta pro EvoPay.
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      setDecoding(true);
+      try {
+        const info = await decodificarQr({ data: { qrCode: code } });
+        if (cancelled) return;
+        setQrInfo({ dynamic: info.qrCodeType === "DYNAMIC", amount: info.amount, name: info.name });
+        setMerchant(info.name ?? null);
+        if (info.amount) setAmount(String(info.amount));
+        if (info.additionalInfo) setDesc(info.additionalInfo);
+      } catch (e) {
+        if (!cancelled) toast.error("QR Pix inválido — " + (e as Error).message);
+      } finally {
+        if (!cancelled) setDecoding(false);
+      }
+    }, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [brCode]);
+
+  function onQrDecoded(text: string) {
     setBrCode(text);
-    toast.success("QR lido — confira e envie");
+    setTab("qr");
   }
 
   return (
@@ -95,7 +137,7 @@ function SaquesPage() {
         <Card className="p-6 h-fit">
           <h2 className="font-semibold flex items-center gap-2"><ArrowUpFromLine className="h-4 w-4 text-primary" /> Novo saque</h2>
 
-          <Tabs defaultValue="chave" className="mt-4">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as "chave" | "qr")} className="mt-4">
             <TabsList className="grid grid-cols-2 w-full">
               <TabsTrigger value="chave">Chave</TabsTrigger>
               <TabsTrigger value="qr">QR / Copia‑cola</TabsTrigger>
@@ -128,18 +170,21 @@ function SaquesPage() {
                 placeholder="Cole aqui o código Pix copia‑e‑cola…"
                 className="min-h-[100px] font-mono text-xs"
               />
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => processBrCode(brCode)} disabled={!brCode.trim()}>
-                  <ScanLine className="h-4 w-4 mr-1" /> Ler código
-                </Button>
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setScanOpen(true)}>
-                  <Camera className="h-4 w-4 mr-1" /> Câmera
-                </Button>
-              </div>
-              {pixKey && (
+              <Button type="button" variant="outline" className="w-full" onClick={() => setScanOpen(true)}>
+                <Camera className="h-4 w-4 mr-1" /> Escanear com câmera
+              </Button>
+              {decoding && (
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Lendo QR…
+                </div>
+              )}
+              {qrInfo && (
                 <div className="rounded-lg bg-muted/40 p-3 text-xs space-y-1">
+                  <div className="flex items-center gap-1 text-primary">
+                    <CheckCircle2 className="h-3 w-3" /> QR {qrInfo.dynamic ? "dinâmico" : "estático"} reconhecido
+                  </div>
                   {merchant && <div><span className="text-muted-foreground">Recebedor:</span> {merchant}</div>}
-                  <div className="font-mono break-all"><span className="text-muted-foreground">Chave:</span> {pixKey}</div>
+                  {qrInfo.amount && <div><span className="text-muted-foreground">Valor:</span> {brl(qrInfo.amount)}</div>}
                 </div>
               )}
             </TabsContent>
@@ -147,14 +192,24 @@ function SaquesPage() {
 
           <form onSubmit={(e) => { e.preventDefault(); create.mutate(); }} className="mt-4 space-y-4">
             <div className="space-y-2">
-              <Label>Valor (R$)</Label>
-              <Input type="number" step="0.01" min="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <Label>Valor (R$) {qrInfo?.dynamic && <span className="text-xs text-muted-foreground">(definido pelo QR)</span>}</Label>
+              <Input
+                type="number" step="0.01" min="0.01"
+                required={!qrInfo?.dynamic}
+                disabled={!!qrInfo?.dynamic}
+                value={qrInfo?.dynamic && qrInfo.amount ? String(qrInfo.amount) : amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label>Descrição (opcional)</Label>
               <Input value={desc} onChange={(e) => setDesc(e.target.value)} />
             </div>
-            <Button type="submit" disabled={create.isPending || !pixKey} className="w-full gradient-primary text-primary-foreground">
+            <Button
+              type="submit"
+              disabled={create.isPending || (tab === "chave" ? !pixKey : !brCode.trim())}
+              className="w-full gradient-primary text-primary-foreground"
+            >
               {create.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar Pix"}
             </Button>
           </form>
@@ -198,7 +253,7 @@ function SaquesPage() {
         </Card>
       </div>
 
-      <QrScanner open={scanOpen} onOpenChange={setScanOpen} onDecoded={processBrCode} />
+      <QrScanner open={scanOpen} onOpenChange={setScanOpen} onDecoded={onQrDecoded} />
       <TransactionDetailDialog tx={detail} onOpenChange={(o) => !o && setDetail(null)} />
     </div>
   );

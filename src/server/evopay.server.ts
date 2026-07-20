@@ -138,6 +138,48 @@ export async function createPayout(input: PayoutInput): Promise<PayoutResult> {
   return { externalId: tx.id, status: s === "expirado" ? "falhou" : s };
 }
 
+export interface QrDecoded {
+  qrCodeType: "DYNAMIC" | "STATIC";
+  amount?: number;
+  name?: string;
+  document?: string;
+  additionalInfo?: string;
+  expiresIn?: string;
+  txid?: string;
+}
+
+export async function decodeQrCode(qrCode: string): Promise<QrDecoded> {
+  if (!TOKEN) {
+    return { qrCodeType: "STATIC", amount: 10, name: "Mock Merchant" };
+  }
+  const res = await call<QrDecoded>("/pix/qr-code/read", {
+    method: "POST",
+    body: JSON.stringify({ qrCode }),
+  });
+  return res;
+}
+
+export interface PayoutQrInput {
+  qrCode: string;
+  amount?: number;
+  description?: string;
+}
+
+export async function createPayoutByQr(input: PayoutQrInput): Promise<PayoutResult & { info?: QrDecoded }> {
+  if (!TOKEN) {
+    return { externalId: `mock_out_${Date.now().toString(36)}`, status: "pago" };
+  }
+  const body: Record<string, unknown> = { qrCode: input.qrCode };
+  if (input.amount) body.amount = Number(input.amount.toFixed(2));
+  if (input.description) body.description = input.description;
+  const tx = await call<EvoPayTransaction>("/withdraw/qrcode", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  const s = mapStatus(tx.status);
+  return { externalId: tx.id, status: s === "expirado" ? "falhou" : s };
+}
+
 export interface RemoteStatus {
   status: "pendente" | "pago" | "expirado" | "falhou";
   endToEndId?: string;
