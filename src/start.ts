@@ -1,6 +1,7 @@
 import { createStart, createMiddleware } from "@tanstack/react-start";
 
 import { renderErrorPage } from "./lib/error-page";
+import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
 // VPS mode: this app uses only its own evopay session token.
 // Do not add the old Lovable Cloud/Supabase auth attacher here; it initializes
 // browser auth/env during SSR and makes the VPS build return the generic 500 page.
@@ -29,5 +30,5 @@ const evopaySessionMiddleware = createMiddleware({ type: "function" }).client(as
 
 export const startInstance = createStart(() => ({
   requestMiddleware: [errorMiddleware],
-  functionMiddleware: [evopaySessionMiddleware],
+  functionMiddleware: [attachSupabaseAuth, evopaySessionMiddleware],
 }));
