@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, ArrowDownToLine, ArrowUpFromLine, History, Users, Wallet, Zap, Code2 } from "lucide-react";
+import { LayoutDashboard, ArrowDownToLine, ArrowUpFromLine, History, Users, Wallet, Code2 } from "lucide-react";
+import lynxLogo from "@/assets/lynx-logo.png.asset.json";
 import {
   Sidebar,
   SidebarContent,
@@ -41,10 +42,10 @@ export function AppSidebar({ role }: { role: "admin" | "funcionario" | "cliente"
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-2 px-2 py-2">
-          <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
-            <Zap className="h-4 w-4 text-primary-foreground" />
+          <div className="h-8 w-8 rounded-lg bg-black flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <img src={lynxLogo.url} alt="Lynx Wallet" className="h-7 w-7 object-contain" />
           </div>
-          <span className="font-display font-bold text-base group-data-[collapsible=icon]:hidden">EvoPay</span>
+          <span className="font-display font-bold text-base group-data-[collapsible=icon]:hidden">Lynx Wallet</span>
         </div>
       </SidebarHeader>
       <SidebarContent>
