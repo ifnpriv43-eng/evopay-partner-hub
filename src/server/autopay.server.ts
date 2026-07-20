@@ -1,39 +1,30 @@
 import { db } from "@/server/db";
-import { createPayout } from "@/server/evopay.server";
 
 export async function executarPagamentoDiario(): Promise<{
   total: number;
   results: Array<{ employeeId: string; ok: boolean; error?: string }>;
 }> {
   const all = await db.listEmployees();
-  const emps = all.filter((e) => e.role === "funcionario" && e.active && e.dailyAmount && e.pixKey);
+  const emps = all.filter((e) => e.role === "funcionario" && e.active && e.dailyAmount);
   const skipped = all.filter(
-    (e) => e.role === "funcionario" && !(e.active && e.dailyAmount && e.pixKey),
+    (e) => e.role === "funcionario" && !(e.active && e.dailyAmount),
   );
   for (const s of skipped) {
     console.log(
-      `[autopay] pulando ${s.name} — active=${s.active} dailyAmount=${s.dailyAmount ?? 0} pixKey=${s.pixKey ? "ok" : "FALTANDO"}`,
+      `[autopay] pulando ${s.name} — active=${s.active} dailyAmount=${s.dailyAmount ?? 0}`,
     );
   }
   const results: Array<{ employeeId: string; ok: boolean; error?: string }> = [];
   for (const e of emps) {
     try {
-      const payout = await createPayout({
-        amount: e.dailyAmount ?? 0,
-        pixKey: e.pixKey!,
-        beneficiaryName: e.name,
-        description: `Diária ${e.name}`,
-      });
       await db.createTransaction({
         kind: "pagamento_funcionario",
-        status: payout.status,
+        status: "pago",
         amount: e.dailyAmount ?? 0,
-        description: `Diária ${e.name}`,
-        pixKey: e.pixKey,
+        description: `Diária ${e.name} (crédito automático no saldo)`,
         counterparty: e.name,
         employeeId: e.id,
-        externalId: payout.externalId,
-        paidAt: payout.status === "pago" ? new Date().toISOString() : undefined,
+        paidAt: new Date().toISOString(),
       });
       results.push({ employeeId: e.id, ok: true });
     } catch (err) {
