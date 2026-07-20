@@ -4,9 +4,12 @@ import { useState, useMemo } from "react";
 import { listarTransacoes } from "@/lib/transactions.functions";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge, brl, kindLabel } from "@/components/tx-helpers";
-import type { TxKind, TxStatus } from "@/server/db/schema";
+import { TransactionDetailDialog } from "@/components/transaction-detail-dialog";
+import { Eye } from "lucide-react";
+import type { Transaction, TxKind, TxStatus } from "@/server/db/schema";
 
 export const Route = createFileRoute("/_authenticated/app/historico")({
   component: HistoricoPage,
