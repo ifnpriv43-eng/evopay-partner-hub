@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge, brl } from "@/components/tx-helpers";
 import { Loader2, ArrowUpFromLine } from "lucide-react";
 import { toast } from "sonner";
@@ -15,11 +16,21 @@ export const Route = createFileRoute("/_authenticated/app/saques")({
   component: SaquesPage,
 });
 
+type KeyType = "cpf" | "cnpj" | "email" | "telefone" | "aleatoria";
+
+const keyPlaceholders: Record<KeyType, string> = {
+  cpf: "000.000.000-00",
+  cnpj: "00.000.000/0000-00",
+  email: "nome@exemplo.com",
+  telefone: "+55 11 99999-9999",
+  aleatoria: "chave-aleatoria-uuid",
+};
+
 function SaquesPage() {
   const qc = useQueryClient();
   const [amount, setAmount] = useState("");
+  const [keyType, setKeyType] = useState<KeyType>("aleatoria");
   const [pixKey, setPixKey] = useState("");
-  const [beneficiary, setBeneficiary] = useState("");
   const [desc, setDesc] = useState("");
 
   const list = useQuery({
@@ -28,9 +39,17 @@ function SaquesPage() {
   });
 
   const create = useMutation({
-    mutationFn: () => criarSaque({ data: { amount: parseFloat(amount), pixKey, beneficiaryName: beneficiary, description: desc || undefined } }),
+    mutationFn: () => criarSaque({
+      data: {
+        amount: parseFloat(amount),
+        pixKey,
+        keyType,
+        beneficiaryName: "—",
+        description: desc || undefined,
+      },
+    }),
     onSuccess: () => {
-      setAmount(""); setPixKey(""); setBeneficiary(""); setDesc("");
+      setAmount(""); setPixKey(""); setDesc("");
       qc.invalidateQueries({ queryKey: ["txs"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: ["saldo"] });
@@ -55,12 +74,21 @@ function SaquesPage() {
               <Input type="number" step="0.01" min="0.01" required value={amount} onChange={(e) => setAmount(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Chave Pix</Label>
-              <Input required value={pixKey} onChange={(e) => setPixKey(e.target.value)} placeholder="CPF, email, celular ou aleatória" />
+              <Label>Tipo de chave</Label>
+              <Select value={keyType} onValueChange={(v) => setKeyType(v as KeyType)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cpf">CPF</SelectItem>
+                  <SelectItem value="cnpj">CNPJ</SelectItem>
+                  <SelectItem value="email">E-mail</SelectItem>
+                  <SelectItem value="telefone">Telefone</SelectItem>
+                  <SelectItem value="aleatoria">Chave aleatória</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
-              <Label>Nome do beneficiário</Label>
-              <Input required value={beneficiary} onChange={(e) => setBeneficiary(e.target.value)} />
+              <Label>Chave Pix</Label>
+              <Input required value={pixKey} onChange={(e) => setPixKey(e.target.value)} placeholder={keyPlaceholders[keyType]} />
             </div>
             <div className="space-y-2">
               <Label>Descrição (opcional)</Label>
@@ -76,11 +104,12 @@ function SaquesPage() {
           <div className="px-6 py-4 border-b border-border">
             <h2 className="font-semibold">Últimos saques</h2>
           </div>
-          <table className="w-full text-sm">
+          <div className="w-full overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
               <tr>
-                <th className="text-left py-3 px-4 font-medium">Beneficiário</th>
                 <th className="text-left py-3 px-4 font-medium">Chave</th>
+                <th className="text-left py-3 px-4 font-medium">Tipo</th>
                 <th className="text-left py-3 px-4 font-medium">Data</th>
                 <th className="text-left py-3 px-4 font-medium">Status</th>
                 <th className="text-right py-3 px-4 font-medium">Valor</th>
@@ -89,9 +118,9 @@ function SaquesPage() {
             <tbody className="divide-y divide-border">
               {(list.data ?? []).map((t) => (
                 <tr key={t.id}>
-                  <td className="py-3 px-4 font-medium">{t.counterparty}</td>
                   <td className="py-3 px-4 text-muted-foreground text-xs">{t.pixKey}</td>
-                  <td className="py-3 px-4 text-muted-foreground">{new Date(t.createdAt).toLocaleString("pt-BR")}</td>
+                  <td className="py-3 px-4 text-muted-foreground capitalize">{t.counterparty && t.counterparty !== "—" ? t.counterparty : "—"}</td>
+                  <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">{new Date(t.createdAt).toLocaleString("pt-BR")}</td>
                   <td className="py-3 px-4"><StatusBadge status={t.status} /></td>
                   <td className="py-3 px-4 text-right font-mono font-semibold">−{brl(t.amount)}</td>
                 </tr>
@@ -101,6 +130,7 @@ function SaquesPage() {
               )}
             </tbody>
           </table>
+          </div>
         </Card>
       </div>
     </div>
