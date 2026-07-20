@@ -27,5 +27,5 @@ const evopaySessionMiddleware = createMiddleware({ type: "function" }).client(as
 
 export const startInstance = createStart(() => ({
   requestMiddleware: [errorMiddleware],
-  functionMiddleware: [attachSupabaseAuth, evopaySessionMiddleware],
+  functionMiddleware: [evopaySessionMiddleware],
 }));
