@@ -34,7 +34,13 @@ export async function executarPagamentoDiario(): Promise<{
     }
   }
   const cfg = await db.getAutoPay();
-  await db.setAutoPay({ ...cfg, lastRunAt: new Date().toISOString() });
+  const brtDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date()); // YYYY-MM-DD
+  await db.setAutoPay({ ...cfg, lastRunAt: `${brtDate}T00:00:00.000Z` });
   return { total: emps.length, results };
 }
 
@@ -49,11 +55,23 @@ export function startAutoPayScheduler() {
     try {
       const cfg = await db.getAutoPay();
       if (!cfg.enabled) return;
-      const now = new Date();
-      if (now.getHours() !== cfg.hour || now.getMinutes() !== cfg.minute) return;
-      const today = now.toISOString().slice(0, 10);
+      // Horário de Brasília (America/Sao_Paulo, UTC-3, sem horário de verão desde 2019)
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Sao_Paulo",
+        hour12: false,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).formatToParts(new Date());
+      const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+      const hour = parseInt(get("hour"), 10);
+      const minute = parseInt(get("minute"), 10);
+      const today = `${get("year")}-${get("month")}-${get("day")}`;
+      if (hour !== cfg.hour || minute !== cfg.minute) return;
       if (cfg.lastRunAt && cfg.lastRunAt.slice(0, 10) === today) return;
-      console.log(`[autopay] disparando pagamentos ${cfg.hour}:${cfg.minute}`);
+      console.log(`[autopay] disparando pagamentos ${cfg.hour}:${cfg.minute} (BRT)`);
       const r = await executarPagamentoDiario();
       console.log(`[autopay] ok=${r.results.filter((x) => x.ok).length}/${r.total}`);
     } catch (e) {
