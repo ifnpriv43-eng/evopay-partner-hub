@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { criarDeposito, simularPagamento } from "@/lib/evopay.functions";
 import { listarTransacoes } from "@/lib/transactions.functions";
 import { Card } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { StatusBadge, brl } from "@/components/tx-helpers";
 import { TransactionDetailDialog } from "@/components/transaction-detail-dialog";
-import { Copy, Loader2, Plus, CheckCircle2, Eye } from "lucide-react";
+import { Copy, Loader2, Plus, CheckCircle2, Eye, PartyPopper } from "lucide-react";
 import { toast } from "sonner";
 import type { Transaction } from "@/server/db/schema";
 
@@ -24,7 +24,8 @@ function DepositosPage() {
   const [amount, setAmount] = useState("");
   const [desc, setDesc] = useState("");
   const [payer, setPayer] = useState("");
-  const [qr, setQr] = useState<{ qrCode: string; qrImage?: string; amount: number } | null>(null);
+  const [qr, setQr] = useState<{ txId: string; qrCode: string; qrImage?: string; amount: number } | null>(null);
+  const [paid, setPaid] = useState(false);
   const [detail, setDetail] = useState<Transaction | null>(null);
 
   const list = useQuery({
@@ -36,7 +37,8 @@ function DepositosPage() {
   const create = useMutation({
     mutationFn: () => criarDeposito({ data: { amount: parseFloat(amount), description: desc || "Cobrança Pix", payerName: payer || undefined } }),
     onSuccess: (res) => {
-      setQr({ qrCode: res.qrCode, qrImage: res.qrImage, amount: res.amount });
+      setQr({ txId: res.tx.id, qrCode: res.qrCode, qrImage: res.qrImage, amount: res.amount });
+      setPaid(false);
       setOpen(false);
       setAmount(""); setDesc(""); setPayer("");
       qc.invalidateQueries({ queryKey: ["txs"] });
@@ -54,6 +56,16 @@ function DepositosPage() {
       toast.success("Pagamento confirmado");
     },
   });
+
+  // Detecta pagamento aprovado da cobrança atual
+  useEffect(() => {
+    if (!qr || paid) return;
+    const tx = list.data?.find((t) => t.id === qr.txId);
+    if (tx && tx.status === "pago") {
+      setPaid(true);
+      toast.success(`Pagamento aprovado — ${brl(tx.amount)}`, { duration: 6000 });
+    }
+  }, [list.data, qr, paid]);
 
   return (
     <div className="space-y-6">
@@ -136,24 +148,52 @@ function DepositosPage() {
 
       <Dialog open={!!qr} onOpenChange={(o) => !o && setQr(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Pix gerado — {qr && brl(qr.amount)}</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            {qr?.qrImage && (
-              <div className="flex justify-center">
-                <img src={qr.qrImage} alt="QR Code Pix" className="rounded-lg bg-white p-2 w-56 h-56" />
+          <DialogHeader>
+            <DialogTitle>
+              {paid ? `Pagamento aprovado — ${qr && brl(qr.amount)}` : `Pix gerado — ${qr && brl(qr.amount)}`}
+            </DialogTitle>
+          </DialogHeader>
+          {paid ? (
+            <div className="flex flex-col items-center gap-4 py-6 text-center">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-full bg-success/20 blur-2xl animate-pulse" />
+                <div className="relative rounded-full bg-success/15 p-6 border-2 border-success/40">
+                  <CheckCircle2 className="h-16 w-16 text-success animate-in zoom-in duration-500" />
+                </div>
               </div>
-            )}
-            <div className="rounded-lg bg-muted p-4">
-              <Label className="text-xs">Código copia e cola</Label>
-              <div className="mt-2 flex gap-2">
-                <code className="flex-1 text-xs break-all bg-background rounded px-2 py-1.5">{qr?.qrCode}</code>
-                <Button size="icon" variant="outline" onClick={() => { navigator.clipboard.writeText(qr?.qrCode ?? ""); toast.success("Copiado"); }}>
-                  <Copy className="h-4 w-4" />
-                </Button>
+              <div className="space-y-1">
+                <p className="text-2xl font-bold flex items-center justify-center gap-2">
+                  <PartyPopper className="h-5 w-5 text-success" /> Pagamento confirmado!
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {qr && brl(qr.amount)} creditado no seu saldo.
+                </p>
               </div>
+              <Button onClick={() => setQr(null)} className="gradient-primary text-primary-foreground w-full">
+                Fechar
+              </Button>
             </div>
-            <p className="text-xs text-muted-foreground">O status é atualizado automaticamente a cada poucos segundos.</p>
-          </div>
+          ) : (
+            <div className="space-y-4">
+              {qr?.qrImage && (
+                <div className="flex justify-center">
+                  <img src={qr.qrImage} alt="QR Code Pix" className="rounded-lg bg-white p-2 w-56 h-56" />
+                </div>
+              )}
+              <div className="rounded-lg bg-muted p-4">
+                <Label className="text-xs">Código copia e cola</Label>
+                <div className="mt-2 flex gap-2">
+                  <code className="flex-1 text-xs break-all bg-background rounded px-2 py-1.5">{qr?.qrCode}</code>
+                  <Button size="icon" variant="outline" onClick={() => { navigator.clipboard.writeText(qr?.qrCode ?? ""); toast.success("Copiado"); }}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground flex items-center gap-2">
+                <Loader2 className="h-3 w-3 animate-spin" /> Aguardando pagamento… o status atualiza sozinho.
+              </p>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
