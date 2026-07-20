@@ -69,7 +69,7 @@ VALUES (
   'u_admin_root',
   'ifnprivado@proton.me',
   'Admin',
-  'sh1$4a2b6f5$6',    -- será sobrescrito abaixo pelo hash correto
+  'sh1$dd373f03$6',
   'admin',
   true
 )
