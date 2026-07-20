@@ -44,7 +44,8 @@ function MeusRecebimentosPage() {
         <div className="px-6 py-4 border-b border-border">
           <h2 className="font-semibold">Extrato</h2>
         </div>
-        <table className="w-full text-sm">
+        <div className="w-full overflow-x-auto">
+        <table className="w-full text-sm min-w-[560px]">
           <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
             <tr>
               <th className="text-left py-3 px-4 font-medium">Data</th>
@@ -67,6 +68,7 @@ function MeusRecebimentosPage() {
             )}
           </tbody>
         </table>
+        </div>
       </Card>
     </div>
   );
