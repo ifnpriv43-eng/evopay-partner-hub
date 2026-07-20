@@ -80,6 +80,8 @@ export const criarSaque = createServerFn({ method: "POST" })
       counterparty: data.keyType ?? data.beneficiaryName ?? "—",
       externalId: payout.externalId,
       paidAt: payout.status === "pago" ? new Date().toISOString() : undefined,
+    });
+    return { tx };
   });
 
 const qrDecodeSchema = z.object({ qrCode: z.string().trim().min(20) });
