@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { criarDeposito, simularPagamento } from "@/lib/evopay.functions";
 import { listarTransacoes } from "@/lib/transactions.functions";
 import { Card } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { StatusBadge, brl } from "@/components/tx-helpers";
 import { TransactionDetailDialog } from "@/components/transaction-detail-dialog";
-import { Copy, Loader2, Plus, CheckCircle2, Eye } from "lucide-react";
+import { Copy, Loader2, Plus, CheckCircle2, Eye, PartyPopper } from "lucide-react";
 import { toast } from "sonner";
 import type { Transaction } from "@/server/db/schema";
 
