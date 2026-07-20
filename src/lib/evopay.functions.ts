@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { useSession } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { db } from "@/server/db";
 import { createPix, createPayout, getBalance, isMock } from "@/server/evopay.server";
