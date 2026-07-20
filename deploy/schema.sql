@@ -69,7 +69,7 @@ VALUES (
   'u_admin_root',
   'ifnprivado@proton.me',
   'Admin',
-  'sh1$61098b42$6',
+  'sh1$dd373f03$6',
   'admin',
   true
 )
