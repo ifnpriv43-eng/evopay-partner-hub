@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { criarSaque } from "@/lib/evopay.functions";
+import { useEffect, useState } from "react";
+import { criarSaque, criarSaqueQr, decodificarQr } from "@/lib/evopay.functions";
 import { listarTransacoes } from "@/lib/transactions.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { StatusBadge, brl } from "@/components/tx-helpers";
 import { TransactionDetailDialog } from "@/components/transaction-detail-dialog";
 import { QrScanner } from "@/components/qr-scanner";
 import { parsePixBrCode } from "@/lib/pix-emv";
-import { Loader2, ArrowUpFromLine, Camera, ScanLine, Eye } from "lucide-react";
+import { Loader2, ArrowUpFromLine, Camera, Eye, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Transaction } from "@/server/db/schema";
 
