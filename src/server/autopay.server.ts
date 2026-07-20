@@ -46,6 +46,30 @@ export async function executarPagamentoDiario(): Promise<{
 
 let started = false;
 
+function getBrasiliaDateParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Sao_Paulo",
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(date);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return {
+    year: get("year"),
+    month: get("month"),
+    day: get("day"),
+    hour: parseInt(get("hour"), 10),
+    minute: parseInt(get("minute"), 10),
+  };
+}
+
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
 export function startAutoPayScheduler() {
   if (started) return;
   if (typeof setInterval !== "function") return;
@@ -55,23 +79,14 @@ export function startAutoPayScheduler() {
     try {
       const cfg = await db.getAutoPay();
       if (!cfg.enabled) return;
-      // Horário de Brasília (America/Sao_Paulo, UTC-3, sem horário de verão desde 2019)
-      const parts = new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/Sao_Paulo",
-        hour12: false,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).formatToParts(new Date());
-      const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-      const hour = parseInt(get("hour"), 10);
-      const minute = parseInt(get("minute"), 10);
-      const today = `${get("year")}-${get("month")}-${get("day")}`;
-      if (hour !== cfg.hour || minute !== cfg.minute) return;
+      const now = getBrasiliaDateParts();
+      const today = `${now.year}-${now.month}-${now.day}`;
       if (cfg.lastRunAt && cfg.lastRunAt.slice(0, 10) === today) return;
-      console.log(`[autopay] disparando pagamentos ${cfg.hour}:${cfg.minute} (BRT)`);
+      const currentMinutes = now.hour * 60 + now.minute;
+      const scheduledMinutes = cfg.hour * 60 + cfg.minute;
+      // Não perde o pagamento se o PM2 reiniciar ou o processo acordar alguns minutos depois.
+      if (currentMinutes < scheduledMinutes) return;
+      console.log(`[autopay] disparando pagamentos ${pad2(cfg.hour)}:${pad2(cfg.minute)} (Brasília)`);
       const r = await executarPagamentoDiario();
       console.log(`[autopay] ok=${r.results.filter((x) => x.ok).length}/${r.total}`);
     } catch (e) {
