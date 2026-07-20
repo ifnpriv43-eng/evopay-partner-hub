@@ -97,10 +97,44 @@ function ApiPage() {
 
       {/* Documentação */}
       <Card className="p-6">
-        <h2 className="font-semibold mb-1">Documentação</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          URL base: <code className="text-xs bg-muted px-1 py-0.5 rounded">{baseUrl}</code>
-        </p>
+        <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+          <div>
+            <h2 className="font-semibold">Documentação</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              URL base: <code className="text-xs bg-muted px-1 py-0.5 rounded">{baseUrl}</code>
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline" size="sm"
+              onClick={() => {
+                const txt = buildLlmsTxt(baseUrl, exampleToken);
+                navigator.clipboard.writeText(txt);
+                toast.success("Documentação copiada — cole na sua IA");
+              }}
+            >
+              <FileText className="h-4 w-4 mr-1" /> Copiar p/ IA
+            </Button>
+            <Button
+              variant="outline" size="sm"
+              onClick={() => {
+                const txt = buildLlmsTxt(baseUrl, exampleToken);
+                const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url; a.download = "llms.txt"; a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              <Download className="h-4 w-4 mr-1" /> Baixar llms.txt
+            </Button>
+          </div>
+        </div>
+        <div className="mb-4 rounded-lg bg-primary/5 border border-primary/20 p-3 text-xs text-muted-foreground">
+          <strong className="text-foreground">Dica:</strong> baixe o <code className="text-primary">llms.txt</code> e envie pro ChatGPT / Claude / Cursor / Copilot.
+          O arquivo já vem com todos os endpoints, exemplos e seu token — a IA gera o código de integração pra você.
+        </div>
+
 
         <div className="space-y-6">
           <EndpointDoc
