@@ -39,10 +39,12 @@ export interface CreatePixResult {
   qrCode: string;
   qrImage?: string;
   expiresAt?: string;
+  amount: number;
 }
 
 interface EvoPayTransaction {
   id: string;
+  amount?: number;
   qrCodeText?: string | null;
   qrCodeBase64?: string | null;
   qrCodeUrl?: string | null;
@@ -51,6 +53,8 @@ interface EvoPayTransaction {
   paidAt?: string | null;
   updatedAt?: string | null;
 }
+
+
 
 function mapStatus(s: string | undefined | null): "pendente" | "pago" | "expirado" | "falhou" {
   const v = (s ?? "").toUpperCase();
@@ -65,7 +69,7 @@ export async function createPix(input: CreatePixInput): Promise<CreatePixResult>
     const id = `mock_${Date.now().toString(36)}`;
     const qrCode = `00020126580014BR.GOV.BCB.PIX0136${id}5204000053039865802BR5913EvoPayMock6009SaoPaulo62070503***6304ABCD`;
     const qrImage = await QRCode.toDataURL(qrCode, { margin: 1, width: 320 });
-    return { externalId: id, qrCode, qrImage, expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString() };
+    return { externalId: id, qrCode, qrImage, expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(), amount: input.amount };
   }
   const body: Record<string, unknown> = {
     amount: Number(input.amount.toFixed(2)),
@@ -78,6 +82,7 @@ export async function createPix(input: CreatePixInput): Promise<CreatePixResult>
     method: "POST",
     body: JSON.stringify(body),
   });
+  console.log("[evopay] createPix sent amount:", body.amount, "response amount:", tx.amount, "id:", tx.id);
   const qrCode = tx.qrCodeText ?? "";
   let qrImage: string | undefined;
   if (tx.qrCodeBase64) {
@@ -85,7 +90,7 @@ export async function createPix(input: CreatePixInput): Promise<CreatePixResult>
   } else if (qrCode) {
     qrImage = await QRCode.toDataURL(qrCode, { margin: 1, width: 320 });
   }
-  return { externalId: tx.id, qrCode, qrImage };
+  return { externalId: tx.id, qrCode, qrImage, amount: tx.amount ?? input.amount };
 }
 
 type UiKeyType = "cpf" | "cnpj" | "email" | "telefone" | "aleatoria";
