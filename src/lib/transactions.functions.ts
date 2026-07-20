@@ -41,10 +41,10 @@ export const listarTransacoes = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => filterSchema.parse(raw ?? {}))
   .handler(async ({ data }) => {
     const s = await requireSession();
-    if (s.role === "funcionario") {
-      return db.listTransactionsForEmployee(s.userId!);
-    }
-    return db.listTransactions(data as { kind?: TxKind; status?: TxStatus; limit?: number });
+    const rows = s.role === "funcionario"
+      ? await db.listTransactionsForEmployee(s.userId!)
+      : await db.listTransactions(data as { kind?: TxKind; status?: TxStatus; limit?: number });
+    return syncPending(rows);
   });
 
 export const resumoDashboard = createServerFn({ method: "GET" }).handler(async () => {
