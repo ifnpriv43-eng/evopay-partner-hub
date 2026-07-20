@@ -1,7 +1,6 @@
 import { createStart, createMiddleware } from "@tanstack/react-start";
 
 import { renderErrorPage } from "./lib/error-page";
-import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
 // This app uses its own evopay session token (see evopaySessionMiddleware below).
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
@@ -28,5 +27,5 @@ const evopaySessionMiddleware = createMiddleware({ type: "function" }).client(as
 
 export const startInstance = createStart(() => ({
   requestMiddleware: [errorMiddleware],
-  functionMiddleware: [attachSupabaseAuth, evopaySessionMiddleware],
+  functionMiddleware: [evopaySessionMiddleware],
 }));
