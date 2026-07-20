@@ -1,6 +1,6 @@
 // Shared types for the data layer. Both memory and sqlite adapters implement DataStore.
 
-export type UserRole = "admin" | "funcionario";
+export type UserRole = "admin" | "funcionario" | "cliente";
 
 export interface User {
   id: string;
