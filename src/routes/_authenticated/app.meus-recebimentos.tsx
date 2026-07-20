@@ -146,6 +146,18 @@ function MeusRecebimentosPage() {
         <Card className="p-5">
           <div className="text-xs uppercase text-muted-foreground flex items-center gap-2"><Clock className="h-3.5 w-3.5" /> A receber</div>
           <div className="mt-3 text-2xl font-bold font-display">{brl(saldo.data?.pendente ?? 0)}</div>
+          {saldo.data?.autoPay?.enabled && (saldo.data.diariaAReceber || saldo.data.diariaAmanha) ? (
+            <div className="mt-2 text-[11px] text-muted-foreground">
+              {saldo.data.jaPagoHoje
+                ? `Próxima diária amanhã às ${String(saldo.data.autoPay.hour).padStart(2, "0")}:${String(saldo.data.autoPay.minute).padStart(2, "0")}`
+                : `Diária de hoje cai às ${String(saldo.data.autoPay.hour).padStart(2, "0")}:${String(saldo.data.autoPay.minute).padStart(2, "0")}`}
+            </div>
+          ) : null}
+          {saldo.data && !saldo.data.hasPixKey && (saldo.data.diariaAReceber || saldo.data.diariaAmanha) ? (
+            <div className="mt-2 text-[11px] text-destructive">
+              Sem chave Pix cadastrada — peça ao admin pra cadastrar pra receber automático.
+            </div>
+          ) : null}
         </Card>
         <Card className="p-5">
           <div className="text-xs uppercase text-muted-foreground flex items-center gap-2"><ArrowUpFromLine className="h-3.5 w-3.5" /> Já sacado</div>
