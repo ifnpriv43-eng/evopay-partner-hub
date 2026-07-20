@@ -85,6 +85,14 @@ export async function createPix(input: CreatePixInput): Promise<CreatePixResult>
   const qrCode = tx.qrCodeText ?? "";
   const qrAmount = parseBrCodeAmount(qrCode);
   console.log("[evopay] createPix sent:", body.amount, "resp:", tx.amount, "qrCode amount:", qrAmount, "id:", tx.id);
+
+  if (qrAmount !== undefined && Math.abs(qrAmount - input.amount) > 0.001) {
+    throw new Error(`EvoPay gerou Pix com valor diferente: enviado R$ ${input.amount.toFixed(2)}, QR R$ ${qrAmount.toFixed(2)}`);
+  }
+  if (tx.amount !== undefined && Math.abs(tx.amount - input.amount) > 0.001) {
+    throw new Error(`EvoPay retornou valor diferente: enviado R$ ${input.amount.toFixed(2)}, retorno R$ ${tx.amount.toFixed(2)}`);
+  }
+
   let qrImage: string | undefined;
   if (tx.qrCodeBase64) {
     qrImage = tx.qrCodeBase64.startsWith("data:") ? tx.qrCodeBase64 : `data:image/png;base64,${tx.qrCodeBase64}`;
@@ -92,8 +100,7 @@ export async function createPix(input: CreatePixInput): Promise<CreatePixResult>
     // Regenerate PNG from qrCodeText to guarantee it matches the string we display
     qrImage = await QRCode.toDataURL(qrCode, { margin: 1, width: 320 });
   }
-  const finalAmount = qrAmount ?? tx.amount ?? input.amount;
-  return { externalId: tx.id, qrCode, qrImage, amount: finalAmount };
+  return { externalId: tx.id, qrCode, qrImage, amount: input.amount };
 }
 
 // Parses a Pix BR Code (EMV) string and returns the amount from tag 54, if present.
