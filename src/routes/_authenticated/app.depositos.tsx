@@ -57,6 +57,16 @@ function DepositosPage() {
     },
   });
 
+  // Detecta pagamento aprovado da cobrança atual
+  useEffect(() => {
+    if (!qr || paid) return;
+    const tx = list.data?.find((t) => t.id === qr.txId);
+    if (tx && tx.status === "pago") {
+      setPaid(true);
+      toast.success(`Pagamento aprovado — ${brl(tx.amount)}`, { duration: 6000 });
+    }
+  }, [list.data, qr, paid]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
