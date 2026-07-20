@@ -3,7 +3,6 @@
 import { createHash, randomBytes } from "crypto";
 
 const TOKEN_PREFIX = "pk_live_";
-const usePg = () => !!process.env.DATABASE_URL;
 
 export interface ApiTokenRow {
   id: string;
@@ -40,10 +39,6 @@ export function generateToken(): { raw: string; hash: string; last4: string } {
   return { raw, hash: hashToken(raw), last4: raw.slice(-4) };
 }
 
-async function admin() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  return supabaseAdmin;
-}
 async function pg() {
   const { getSql } = await import("@/server/db/pg.server");
   return getSql();
@@ -66,17 +61,10 @@ export function rowToPublic(r: ApiTokenRow): ApiTokenPublic {
 }
 
 export async function listTokens(userId: string): Promise<ApiTokenPublic[]> {
-  if (usePg()) {
-    const sql = await pg();
-    const rows = await sql<ApiTokenRow[]>`
-      SELECT * FROM api_tokens WHERE user_id = ${userId} ORDER BY created_at DESC`;
-    return rows.map((r) => rowToPublic(normalizeRow(r)));
-  }
-  const sb = await admin();
-  // deno-lint-ignore no-explicit-any
-  const { data } = await (sb.from as any)("api_tokens")
-    .select("*").eq("user_id", userId).order("created_at", { ascending: false });
-  return ((data ?? []) as ApiTokenRow[]).map(rowToPublic);
+  const sql = await pg();
+  const rows = await sql<ApiTokenRow[]>`
+    SELECT * FROM api_tokens WHERE user_id = ${userId} ORDER BY created_at DESC`;
+  return rows.map((r) => rowToPublic(normalizeRow(r)));
 }
 
 export async function createToken(userId: string, name: string): Promise<{ token: string; row: ApiTokenPublic }> {
@@ -85,35 +73,20 @@ export async function createToken(userId: string, name: string): Promise<{ token
     id: uid("apitk"), user_id: userId, name, token_hash: hash, token_last4: last4,
     active: true, created_at: new Date().toISOString(), last_used_at: null, revoked_at: null,
   };
-  if (usePg()) {
-    const sql = await pg();
-    const rows = await sql<ApiTokenRow[]>`
-      INSERT INTO api_tokens (id, user_id, name, token_hash, token_last4, active, created_at)
-      VALUES (${row.id}, ${row.user_id}, ${row.name}, ${row.token_hash}, ${row.token_last4}, ${row.active}, ${row.created_at})
-      RETURNING *`;
-    return { token: raw, row: rowToPublic(normalizeRow(rows[0])) };
-  }
-  const sb = await admin();
-  // deno-lint-ignore no-explicit-any
-  const { data, error } = await (sb.from as any)("api_tokens").insert(row).select("*").single();
-  if (error) throw error;
-  return { token: raw, row: rowToPublic(data as ApiTokenRow) };
+  const sql = await pg();
+  const rows = await sql<ApiTokenRow[]>`
+    INSERT INTO api_tokens (id, user_id, name, token_hash, token_last4, active, created_at)
+    VALUES (${row.id}, ${row.user_id}, ${row.name}, ${row.token_hash}, ${row.token_last4}, ${row.active}, ${row.created_at})
+    RETURNING *`;
+  return { token: raw, row: rowToPublic(normalizeRow(rows[0])) };
 }
 
 export async function revokeToken(userId: string, id: string): Promise<boolean> {
-  if (usePg()) {
-    const sql = await pg();
-    const rows = await sql`
-      UPDATE api_tokens SET active = false, revoked_at = now()
-      WHERE id = ${id} AND user_id = ${userId} RETURNING id`;
-    return rows.length > 0;
-  }
-  const sb = await admin();
-  // deno-lint-ignore no-explicit-any
-  const { error } = await (sb.from as any)("api_tokens")
-    .update({ active: false, revoked_at: new Date().toISOString() })
-    .eq("id", id).eq("user_id", userId);
-  return !error;
+  const sql = await pg();
+  const rows = await sql`
+    UPDATE api_tokens SET active = false, revoked_at = now()
+    WHERE id = ${id} AND user_id = ${userId} RETURNING id`;
+  return rows.length > 0;
 }
 
 export interface AuthedApiToken {
@@ -131,25 +104,12 @@ export async function authenticateApiToken(request: Request): Promise<AuthedApiT
   if (!raw.startsWith(TOKEN_PREFIX)) return null;
   const hash = hashToken(raw);
 
-  if (usePg()) {
-    const sql = await pg();
-    const rows = await sql<{ id: string; user_id: string; active: boolean; revoked_at: string | null }[]>`
-      SELECT id, user_id, active, revoked_at FROM api_tokens WHERE token_hash = ${hash} LIMIT 1`;
-    const row = rows[0];
-    if (!row || !row.active || row.revoked_at) return null;
-    sql`UPDATE api_tokens SET last_used_at = now() WHERE id = ${row.id}`.catch(() => {});
-    return { userId: row.user_id, tokenId: row.id };
-  }
-
-  const sb = await admin();
-  // deno-lint-ignore no-explicit-any
-  const { data } = await (sb.from as any)("api_tokens")
-    .select("id, user_id, active, revoked_at").eq("token_hash", hash).maybeSingle();
-  const row = data as { id: string; user_id: string; active: boolean; revoked_at: string | null } | null;
+  const sql = await pg();
+  const rows = await sql<{ id: string; user_id: string; active: boolean; revoked_at: string | null }[]>`
+    SELECT id, user_id, active, revoked_at FROM api_tokens WHERE token_hash = ${hash} LIMIT 1`;
+  const row = rows[0];
   if (!row || !row.active || row.revoked_at) return null;
-  // deno-lint-ignore no-explicit-any
-  (sb.from as any)("api_tokens").update({ last_used_at: new Date().toISOString() }).eq("id", row.id)
-    .then(() => {}, () => {});
+  sql`UPDATE api_tokens SET last_used_at = now() WHERE id = ${row.id}`.catch(() => {});
   return { userId: row.user_id, tokenId: row.id };
 }
 
