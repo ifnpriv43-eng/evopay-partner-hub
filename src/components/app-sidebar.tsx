@@ -10,6 +10,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 const adminItems = [
@@ -27,8 +28,10 @@ const employeeItems = [
 
 export function AppSidebar({ role }: { role: "admin" | "funcionario" }) {
   const currentPath = useRouterState({ select: (r) => r.location.pathname });
+  const { isMobile, setOpenMobile } = useSidebar();
   const items = role === "admin" ? adminItems : employeeItems;
   const isActive = (path: string) => currentPath === path;
+  const handleNav = () => { if (isMobile) setOpenMobile(false); };
 
   return (
     <Sidebar collapsible="icon">
@@ -48,7 +51,7 @@ export function AppSidebar({ role }: { role: "admin" | "funcionario" }) {
               {items.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
-                    <Link to={item.url}>
+                    <Link to={item.url} onClick={handleNav}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </Link>
