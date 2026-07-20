@@ -342,3 +342,186 @@ function NewTokenDialog({ open, onOpenChange, onCreated, rawToken }: {
     </Dialog>
   );
 }
+
+function buildLlmsTxt(baseUrl: string, token: string): string {
+  return `# API do Dashboard — Documentação para IAs
+
+Esta API é um wrapper próprio sobre um gateway Pix. Todo pagamento gerado
+com um token cai no saldo do dono do token. O usuário final deve usar SOMENTE
+esta API — nunca chamar o gateway original diretamente.
+
+## Autenticação
+Envie o token no header em TODAS as requisições:
+  Authorization: Bearer ${token}
+
+Formato do token: pk_live_... (32+ chars). Trate como senha.
+
+## URL base
+${baseUrl}
+
+## Formato
+- Requests JSON: Content-Type: application/json
+- Respostas: JSON UTF-8
+- Valores monetários: number em BRL (ex: 10.50 = R$ 10,50)
+- Datas: ISO 8601 UTC
+
+---
+
+## Endpoints
+
+### GET /balance
+Retorna o saldo interno do dono do token.
+
+Resposta 200:
+{
+  "recebido": 1250.00,   // total já pago (entrou)
+  "sacado": 300.00,      // total já sacado (saiu)
+  "disponivel": 950.00   // recebido - sacado
+}
+
+Exemplo:
+  curl ${baseUrl}/balance -H "Authorization: Bearer ${token}"
+
+---
+
+### POST /pix
+Gera uma cobrança Pix. Retorna QR Code copia-e-cola + imagem base64.
+
+Body:
+{
+  "amount": 10.00,               // obrigatório, número, mínimo 0.01
+  "description": "Pedido #123",  // obrigatório, string
+  "payerName": "João Silva",     // opcional
+  "payerDocument": "12345678900" // opcional, CPF/CNPJ sem máscara
+}
+
+Resposta 200:
+{
+  "id": "tx_abc123",
+  "kind": "deposito",
+  "status": "pendente",  // pendente | pago | cancelado
+  "amount": 10.00,
+  "qrCode": "00020126580014BR.GOV.BCB.PIX...",  // copia-e-cola
+  "qrImage": "data:image/png;base64,iVBOR...",   // PNG pronto pra <img src>
+  "createdAt": "2026-07-20T12:00:00.000Z"
+}
+
+---
+
+### GET /pix/{id}
+Consulta status de um Pix. Sincroniza com o gateway automaticamente.
+
+Resposta 200:
+{
+  "id": "tx_abc123",
+  "status": "pago",
+  "amount": 10.00,
+  "paidAt": "2026-07-20T12:05:32.000Z"  // null se ainda pendente
+}
+
+Erros: 404 not_found (id inexistente ou de outro dono)
+
+---
+
+### POST /withdraw
+Envia um Pix pra uma chave. Debita do saldo disponível.
+
+Body:
+{
+  "amount": 50.00,                    // obrigatório
+  "pixKey": "email@exemplo.com",      // obrigatório
+  "keyType": "email",                 // cpf | cnpj | email | telefone | aleatoria
+  "description": "Saque cliente"      // opcional
+}
+
+Resposta 200:
+{
+  "id": "tx_xyz789",
+  "kind": "saque",
+  "status": "pendente",
+  "amount": 50.00
+}
+
+Erros: 402 insufficient_balance
+
+---
+
+### POST /withdraw/qrcode
+Paga um QR Pix (copia-e-cola). Funciona pra estático e dinâmico.
+
+Body:
+{
+  "qrCode": "00020126580014BR.GOV.BCB.PIX...",
+  "amount": 25.00   // obrigatório APENAS se o QR for estático sem valor
+}
+
+Resposta: mesma estrutura do POST /withdraw.
+
+---
+
+### GET /withdraw/{id}
+Status de um saque. Sincroniza com o gateway.
+
+Resposta 200:
+{
+  "id": "tx_xyz789",
+  "status": "pago",
+  "paidAt": "2026-07-20T12:10:00.000Z"
+}
+
+---
+
+### GET /transactions?limit=50
+Lista as últimas transações do dono do token.
+
+Query params:
+- limit: número, padrão 50, máximo 200
+
+Resposta 200:
+{
+  "data": [
+    {
+      "id": "tx_...",
+      "kind": "deposito",     // deposito | saque
+      "status": "pago",
+      "amount": 10.00,
+      "description": "...",
+      "createdAt": "...",
+      "paidAt": "..."
+    }
+  ],
+  "total": 42
+}
+
+---
+
+## Códigos de erro
+
+Todas as respostas de erro seguem o formato:
+{ "error": "<code>", "message": "<detalhe>" }
+
+- 400 invalid_input       — body/campos inválidos (Zod)
+- 400 invalid_json        — JSON malformado
+- 401 unauthorized        — token ausente, inválido ou revogado
+- 402 insufficient_balance — saldo insuficiente pro saque
+- 404 not_found           — id não encontrado (ou pertence a outro dono)
+- 502 gateway_error       — falha na comunicação com o Pix
+
+---
+
+## Fluxo típico de integração (checkout)
+
+1. Cliente confirma pedido no seu sistema.
+2. POST /pix { amount, description }  -> guarde \`id\` no seu banco.
+3. Mostre o \`qrImage\` (base64) ou \`qrCode\` (copia-e-cola) pro cliente.
+4. Faça polling: GET /pix/{id} a cada 5s (ou webhook, se disponível).
+5. Quando \`status === "pago"\`, libere o produto/serviço.
+
+## Boas práticas
+
+- Nunca coloque o token em código do front-end. Use SEMPRE do servidor.
+- Trate 502 com retry exponencial.
+- Idempotência: guarde o \`id\` retornado; não crie 2 cobranças pro mesmo pedido.
+- Para valores em centavos no seu sistema, divida por 100 antes de enviar.
+`;
+}
