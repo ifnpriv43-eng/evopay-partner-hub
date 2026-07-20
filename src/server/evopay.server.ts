@@ -1,6 +1,7 @@
 // EvoPay HTTP wrapper. When EVOPAY_TOKEN is set, calls the real gateway;
 // otherwise returns realistic mock data so the UI is fully explorable in
 // the Lovable preview. See https://docs.partners.evopay.cash/llms-full.txt
+import QRCode from "qrcode";
 
 const BASE = process.env.EVOPAY_BASE_URL ?? "https://api.partners.evopay.cash";
 const TOKEN = process.env.EVOPAY_TOKEN;
