@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, ArrowDownToLine, ArrowUpFromLine, History, Users, Wallet, Zap } from "lucide-react";
+import { LayoutDashboard, ArrowDownToLine, ArrowUpFromLine, History, Users, Wallet, Zap, Code2 } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -19,11 +19,13 @@ const adminItems = [
   { title: "Saques", url: "/app/saques", icon: ArrowUpFromLine },
   { title: "Histórico", url: "/app/historico", icon: History },
   { title: "Funcionários", url: "/app/funcionarios", icon: Users },
+  { title: "API & Docs", url: "/app/api", icon: Code2 },
 ];
 
 const employeeItems = [
   { title: "Meus recebimentos", url: "/app/meus-recebimentos", icon: Wallet },
   { title: "Histórico", url: "/app/historico", icon: History },
+  { title: "API & Docs", url: "/app/api", icon: Code2 },
 ];
 
 export function AppSidebar({ role }: { role: "admin" | "funcionario" | "cliente" }) {

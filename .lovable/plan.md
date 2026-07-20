@@ -1,38 +1,58 @@
-# Plano
+# API própria + documentação por usuário
 
-## 1. Sincronização de status (depósitos e saques)
-Hoje o status fica “pendente” mesmo depois de pago porque só gravamos o retorno inicial da EvoPay. Vou:
-- Adicionar `atualizarStatusTransacao(id)` server fn que chama `GET /pix/{id}` ou `GET /withdraw/{id}` e atualiza o registro local (status, `paidAt`, `endToEndId`, etc.).
-- Fazer polling automático a cada 8s nas telas de Depósitos/Saques enquanto houver itens `pendente` (via TanStack Query `refetchInterval`).
-- Manter o webhook `/api/public/evopay.webhook` como fonte primária quando disponível.
+Cada cliente/funcionário ganha um **token pessoal** (`pk_...`) e uma **página de documentação** dentro do dashboard. Quando ele integra no sistema dele, os depósitos gerados caem no **saldo interno dele** (não no meu saldo global). Por trás, tudo passa pela minha conta EvoPay usando meu token master — ele nunca vê meu token.
 
-## 2. Saldo — admin vs. funcionário
-Confirmando: **saldo do gateway EvoPay é visível apenas para admin**. Vou:
-- Bloquear `consultarSaldo` para `role !== "admin"` (retorna 403).
-- Esconder o card “Saldo EvoPay” do dashboard para funcionários.
-- Criar `meuSaldo()` para funcionários: soma dos `pagamento_funcionario` com status `pago` menos o que já foi sacado por ele (histórico próprio). Exibir no `/app/meus-recebimentos`.
+## 1. Tokens de API pessoais
 
-> Obs.: EvoPay tem uma única carteira por token; não há sub-contas nativas. O saldo por funcionário é calculado internamente a partir do histórico.
+- Nova tabela `api_tokens` (id, user_id, token, name, active, created_at, last_used_at, revoked_at).
+- Token gerado como `pk_live_` + 32 chars aleatórios; guardado em hash SHA-256 no banco (só o dono vê o valor completo uma vez, ao criar).
+- Cada usuário pode ter vários tokens (ex: "produção", "teste"), revogar e ver a data do último uso.
 
-## 3. Detalhes / comprovante da transação
-- Adicionar botão “Ver” em cada linha das tabelas (Depósitos, Saques, Histórico).
-- Abrir modal `TransactionDetailDialog` com: ID interno, ID EvoPay, status atual (com botão “Atualizar”), valor, descrição, chave/pagador, criado em, pago em, `endToEndId`, e para depósito o QR + copia‑e‑cola.
-- Botão “Baixar comprovante” gera PNG simples via `html-to-image` (client) do próprio modal.
+## 2. Endpoints públicos (`/api/public/v1/*`)
 
-## 4. Saque por QR Pix (copia‑e‑cola + câmera)
-Segundo a doc, `POST /withdraw/` aceita chave Pix. Para pagar um QR (BR Code) vamos:
-- Decodificar o payload EMV no cliente para extrair a chave Pix (campo 26 → subcampo 01) e o valor sugerido (campo 54) usando um parser leve próprio (sem dependência nativa).
-- Preencher automaticamente `pixKey`, `keyType` e `amount` no formulário de saque; usuário confirma e envia via o mesmo endpoint `/withdraw/`.
-- Adicionar toggle no topo do formulário: **Chave manual** | **QR / Copia‑e‑cola**.
-- No modo QR:
-  - Textarea para colar o BR Code → botão “Ler”.
-  - Botão “Escanear com a câmera” usando `@zxing/browser` (WebAssembly, funciona no mobile) abrindo `<video>` in‑modal.
+Autenticados via header `Authorization: Bearer pk_live_...`. Todos retornam JSON:
 
-> A doc EvoPay não expõe um endpoint dedicado “pagar QR”; o fluxo padrão é extrair a chave do BR Code e usar `/withdraw/`. Se você tiver acesso a um endpoint específico (ex: `/pix/pay-qr`), me diga que eu troco.
+| Método | Rota | O que faz |
+|---|---|---|
+| `GET`  | `/api/public/v1/balance` | Saldo interno do dono do token (recebido − sacado) |
+| `POST` | `/api/public/v1/pix` | Cria depósito Pix. Body: `{ amount, description, payerName?, payerDocument? }`. Retorna `id`, `qrCode`, `qrImage`, `status`. **A transação fica marcada com `employee_id = dono do token`**, então o valor pago cai no saldo interno dele. |
+| `GET`  | `/api/public/v1/pix/:id` | Status de um depósito (sincroniza com EvoPay) |
+| `POST` | `/api/public/v1/withdraw` | Saque via chave Pix. Body: `{ amount, pixKey, keyType, description? }`. Valida saldo interno do dono antes de enviar. |
+| `POST` | `/api/public/v1/withdraw/qrcode` | Saque pagando um QR/copia‑e‑cola |
+| `GET`  | `/api/public/v1/withdraw/:id` | Status de um saque |
+| `GET`  | `/api/public/v1/transactions` | Lista transações do dono (paginado) |
+| `POST` | `/api/public/v1/webhook` | (opcional futuro) URL onde o dono recebe notificações quando um depósito é pago |
 
-## 5. Detalhes técnicos
-- Novas deps: `@zxing/browser` (scanner). Parser EMV escrito à mão (~40 linhas).
-- Novos arquivos: `src/lib/pix-emv.ts`, `src/components/qr-scanner.tsx`, `src/components/transaction-detail-dialog.tsx`.
-- Atualizações: `evopay.server.ts` (+ `getPixStatus`, `getWithdrawStatus`), `evopay.functions.ts` (+ `atualizarStatus`, guard admin no saldo), `app.depositos.tsx`, `app.saques.tsx`, `app.historico.tsx`, `app.index.tsx`, `app.meus-recebimentos.tsx`.
+Todas as chamadas por trás usam o token master da EvoPay, mas o registro no banco fica com `employee_id` do dono do token → dashboard dele mostra a movimentação, saldo cresce, sacar consome desse saldo. **Igual saques feitos pelo próprio dashboard**.
 
-Confirma que posso seguir com tudo isso?
+## 3. Segurança
+
+- Rate limit simples por token (60 req/min, em memória por instância) — evita abuso.
+- Validação Zod em todo body.
+- Nunca retorna PII de outros usuários; token só enxerga as próprias transações.
+- Rota fica em `/api/public/*` (bypass do gate de auth do Lovable), mas o handler exige o Bearer token — sem token válido, `401`.
+
+## 4. Página "Minha API" dentro do dashboard
+
+Nova rota `/app/api` (visível pra admin, funcionário e cliente):
+
+- **Meus tokens**: lista com nome, últimos 4 chars, último uso, botão revogar.
+- **Criar token**: modal com nome → mostra o `pk_live_...` completo uma única vez (com botão copiar), aviso "guarde agora, não conseguimos mostrar de novo".
+- **Documentação**: seções com exemplos em cURL e JavaScript pra cada endpoint. URL base mostrada dinamicamente (`window.location.origin/api/public/v1`). Todos os exemplos já vêm com **o token do usuário logado** pré‑preenchido, pra ele testar copiando e colando.
+- Bloco final "Como funciona": explica em 2 parágrafos que os pagamentos entram automaticamente no saldo dele e podem ser sacados pelo próprio dashboard ou pela API.
+
+## 5. Arquivos que mudam
+
+- Migração: nova tabela `api_tokens` (+ GRANTs + RLS).
+- `src/lib/api-tokens.functions.ts` — criar/listar/revogar tokens (server fns, protegidas por sessão).
+- `src/server/api-auth.ts` — helper `authenticateApiToken(request)` que resolve o token do header pro `user_id`.
+- `src/routes/api/public/v1/*.ts` — 7 rotas HTTP acima.
+- `src/routes/_authenticated/app.api.tsx` — página com tokens + documentação (usa componentes shadcn Tabs/Card + syntax highlighting simples).
+- `src/components/app-sidebar.tsx` — item "API & Docs" no menu.
+
+## Confirmação
+
+Posso seguir com esse formato? Duas perguntas rápidas antes de codar:
+
+1. **Webhooks pro cliente** (item opcional na tabela): implemento agora ou deixo pra depois?
+2. **Taxa/comissão sua** sobre depósitos que caem via API de terceiros: quer que eu já preveja uma % configurável (ex: 2% do depósito fica com você, 98% cai no saldo do cliente)? Ou 100% pro cliente por enquanto?

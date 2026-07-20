@@ -141,10 +141,10 @@ export const meuSaldoFuncionario = createServerFn({ method: "GET" }).handler(asy
   const s = await requireSession();
   const list = await db.listTransactionsForEmployee(s.userId!);
   const recebido = list
-    .filter((t) => t.kind === "pagamento_funcionario" && t.status === "pago")
+    .filter((t) => (t.kind === "pagamento_funcionario" || t.kind === "deposito") && t.status === "pago")
     .reduce((a, b) => a + b.amount, 0);
   const pendente = list
-    .filter((t) => t.kind === "pagamento_funcionario" && t.status === "pendente")
+    .filter((t) => (t.kind === "pagamento_funcionario" || t.kind === "deposito") && t.status === "pendente")
     .reduce((a, b) => a + b.amount, 0);
   const sacado = list
     .filter((t) => t.kind === "saque" && (t.status === "pago" || t.status === "pendente"))
@@ -166,7 +166,7 @@ export const sacarMeuSaldo = createServerFn({ method: "POST" })
     // Verifica saldo disponível
     const list = await db.listTransactionsForEmployee(s.userId!);
     const recebido = list
-      .filter((t) => t.kind === "pagamento_funcionario" && t.status === "pago")
+      .filter((t) => (t.kind === "pagamento_funcionario" || t.kind === "deposito") && t.status === "pago")
       .reduce((a, b) => a + b.amount, 0);
     const sacado = list
       .filter((t) => t.kind === "saque" && (t.status === "pago" || t.status === "pendente"))
