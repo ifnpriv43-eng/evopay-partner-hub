@@ -20,8 +20,8 @@ function LoginPage() {
   const router = useRouter();
   const loginFn = useServerFn(login);
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState("admin@evopay.local");
-  const [pw, setPw] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [pw, setPw] = useState("");
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
