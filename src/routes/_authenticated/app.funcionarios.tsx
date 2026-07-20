@@ -217,7 +217,7 @@ function NewEmployeeDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           <div className="space-y-1.5"><Label>Nome</Label><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>E-mail</Label><Input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Senha</Label><Input type="password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
-          <div className="space-y-1.5"><Label>Chave Pix</Label><Input value={f.pixKey} onChange={(e) => setF({ ...f, pixKey: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>Chave Pix <span className="text-xs text-muted-foreground">(opcional — pagamentos em lote precisam dela)</span></Label><Input value={f.pixKey} onChange={(e) => setF({ ...f, pixKey: e.target.value })} placeholder="Deixe em branco pra deixar o próprio usuário escolher no saque" /></div>
           {f.role === "funcionario" && (
             <div className="space-y-1.5"><Label>Valor diário (R$)</Label><Input type="number" step="0.01" value={f.dailyAmount} onChange={(e) => setF({ ...f, dailyAmount: e.target.value })} /></div>
           )}
