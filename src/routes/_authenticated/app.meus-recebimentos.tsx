@@ -1,16 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { listarTransacoes } from "@/lib/transactions.functions";
-import { meuSaldoFuncionario, sacarMeuSaldo } from "@/lib/evopay.functions";
+import { meuSaldoFuncionario, sacarMeuSaldo, criarSaqueQr, decodificarQr } from "@/lib/evopay.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatusBadge, brl } from "@/components/tx-helpers";
 import { TransactionDetailDialog } from "@/components/transaction-detail-dialog";
-import { Wallet, TrendingUp, Clock, Eye, ArrowUpFromLine, Loader2 } from "lucide-react";
+import { QrScanner } from "@/components/qr-scanner";
+import { parsePixBrCode } from "@/lib/pix-emv";
+import { Wallet, TrendingUp, Clock, Eye, ArrowUpFromLine, Loader2, Camera, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Transaction } from "@/server/db/schema";
 
@@ -38,23 +42,90 @@ function MeusRecebimentosPage() {
   });
   const saldo = useQuery({ queryKey: ["meu-saldo"], queryFn: () => meuSaldoFuncionario() });
 
+  const [tab, setTab] = useState<"chave" | "qr">("chave");
   const [amount, setAmount] = useState("");
   const [keyType, setKeyType] = useState<KeyType>("aleatoria");
   const [pixKey, setPixKey] = useState("");
+  const [desc, setDesc] = useState("");
+  const [brCode, setBrCode] = useState("");
+  const [scanOpen, setScanOpen] = useState(false);
+  const [merchant, setMerchant] = useState<string | null>(null);
+  const [qrInfo, setQrInfo] = useState<{ dynamic: boolean; amount?: number; name?: string } | null>(null);
+  const [decoding, setDecoding] = useState(false);
+
+  const disponivel = saldo.data?.disponivel ?? 0;
 
   const sacar = useMutation({
-    mutationFn: () => sacarMeuSaldo({
-      data: { amount: parseFloat(amount), pixKey, keyType, description: "Saque solicitado" },
-    }),
+    mutationFn: async () => {
+      if (tab === "qr") {
+        return criarSaqueQr({
+          data: {
+            qrCode: brCode.trim(),
+            amount: qrInfo?.dynamic ? undefined : parseFloat(amount),
+            description: desc || undefined,
+          },
+        });
+      }
+      return sacarMeuSaldo({
+        data: { amount: parseFloat(amount), pixKey, keyType, description: desc || "Saque solicitado" },
+      });
+    },
     onSuccess: () => {
-      setAmount(""); setPixKey("");
+      setAmount(""); setPixKey(""); setDesc(""); setBrCode(""); setMerchant(null); setQrInfo(null);
       qc.invalidateQueries();
       toast.success("Saque solicitado");
     },
     onError: (e) => toast.error((e as Error).message),
   });
 
-  const disponivel = saldo.data?.disponivel ?? 0;
+  // Auto-decodifica QR (igual à página de saques).
+  useEffect(() => {
+    const code = brCode.trim();
+    if (!code || code.length < 20) {
+      setQrInfo(null);
+      setMerchant(null);
+      return;
+    }
+    const parsed = parsePixBrCode(code);
+    if (parsed?.pixKey) {
+      setPixKey(parsed.pixKey);
+      if (parsed.keyType) setKeyType(parsed.keyType);
+      if (parsed.amount) setAmount(String(parsed.amount));
+      if (parsed.description) setDesc(parsed.description);
+      setMerchant(parsed.merchantName ?? null);
+      setQrInfo({ dynamic: false, amount: parsed.amount, name: parsed.merchantName });
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      setDecoding(true);
+      try {
+        const info = await decodificarQr({ data: { qrCode: code } });
+        if (cancelled) return;
+        setQrInfo({ dynamic: info.qrCodeType === "DYNAMIC", amount: info.amount, name: info.name });
+        setMerchant(info.name ?? null);
+        if (info.amount) setAmount(String(info.amount));
+        if (info.additionalInfo) setDesc(info.additionalInfo);
+      } catch (e) {
+        if (!cancelled) toast.error("QR Pix inválido — " + (e as Error).message);
+      } finally {
+        if (!cancelled) setDecoding(false);
+      }
+    }, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [brCode]);
+
+  function onQrDecoded(text: string) {
+    setBrCode(text);
+    setTab("qr");
+  }
+
+  const valorEfetivo = tab === "qr" && qrInfo?.dynamic && qrInfo.amount ? qrInfo.amount : parseFloat(amount || "0");
+  const podeEnviar =
+    !sacar.isPending &&
+    valorEfetivo > 0 &&
+    valorEfetivo <= disponivel &&
+    (tab === "chave" ? !!pixKey : !!brCode.trim());
 
   return (
     <div className="space-y-6">
@@ -85,36 +156,83 @@ function MeusRecebimentosPage() {
       <div className="grid gap-6 lg:grid-cols-[400px_1fr]">
         <Card className="p-6 h-fit">
           <h2 className="font-semibold flex items-center gap-2"><ArrowUpFromLine className="h-4 w-4 text-primary" /> Sacar meu saldo</h2>
-          <p className="text-xs text-muted-foreground mt-1">Escolha a chave Pix pra onde o valor vai.</p>
+          <p className="text-xs text-muted-foreground mt-1">Envie por chave Pix ou pagando um QR / copia‑e‑cola.</p>
+
+          <Tabs value={tab} onValueChange={(v) => setTab(v as "chave" | "qr")} className="mt-4">
+            <TabsList className="grid grid-cols-2 w-full">
+              <TabsTrigger value="chave">Chave</TabsTrigger>
+              <TabsTrigger value="qr">QR / Copia‑cola</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="chave" className="mt-4 space-y-4">
+              <div className="space-y-2">
+                <Label>Tipo de chave</Label>
+                <Select value={keyType} onValueChange={(v) => setKeyType(v as KeyType)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cpf">CPF</SelectItem>
+                    <SelectItem value="cnpj">CNPJ</SelectItem>
+                    <SelectItem value="email">E-mail</SelectItem>
+                    <SelectItem value="telefone">Telefone</SelectItem>
+                    <SelectItem value="aleatoria">Chave aleatória</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Chave Pix</Label>
+                <Input value={pixKey} onChange={(e) => setPixKey(e.target.value)} placeholder={keyPlaceholders[keyType]} />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="qr" className="mt-4 space-y-3">
+              <Textarea
+                value={brCode}
+                onChange={(e) => setBrCode(e.target.value)}
+                placeholder="Cole aqui o código Pix copia‑e‑cola…"
+                className="min-h-[100px] font-mono text-xs"
+              />
+              <Button type="button" variant="outline" className="w-full" onClick={() => setScanOpen(true)}>
+                <Camera className="h-4 w-4 mr-1" /> Escanear com câmera
+              </Button>
+              {decoding && (
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Lendo QR…
+                </div>
+              )}
+              {qrInfo && (
+                <div className="rounded-lg bg-muted/40 p-3 text-xs space-y-1">
+                  <div className="flex items-center gap-1 text-primary">
+                    <CheckCircle2 className="h-3 w-3" /> QR {qrInfo.dynamic ? "dinâmico" : "estático"} reconhecido
+                  </div>
+                  {merchant && <div><span className="text-muted-foreground">Recebedor:</span> {merchant}</div>}
+                  {qrInfo.amount && <div><span className="text-muted-foreground">Valor:</span> {brl(qrInfo.amount)}</div>}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+
           <form onSubmit={(e) => { e.preventDefault(); sacar.mutate(); }} className="mt-4 space-y-4">
             <div className="space-y-2">
-              <Label>Tipo de chave</Label>
-              <Select value={keyType} onValueChange={(v) => setKeyType(v as KeyType)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cpf">CPF</SelectItem>
-                  <SelectItem value="cnpj">CNPJ</SelectItem>
-                  <SelectItem value="email">E-mail</SelectItem>
-                  <SelectItem value="telefone">Telefone</SelectItem>
-                  <SelectItem value="aleatoria">Chave aleatória</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Chave Pix</Label>
-              <Input value={pixKey} onChange={(e) => setPixKey(e.target.value)} placeholder={keyPlaceholders[keyType]} />
-            </div>
-            <div className="space-y-2">
-              <Label>Valor (R$)</Label>
-              <Input type="number" step="0.01" min="0.01" max={disponivel} required value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <Label>Valor (R$) {qrInfo?.dynamic && <span className="text-xs text-muted-foreground">(definido pelo QR)</span>}</Label>
+              <Input
+                type="number" step="0.01" min="0.01" max={disponivel}
+                required={!qrInfo?.dynamic}
+                disabled={!!qrInfo?.dynamic}
+                value={qrInfo?.dynamic && qrInfo.amount ? String(qrInfo.amount) : amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Disponível: {brl(disponivel)}</span>
                 <button type="button" className="text-primary hover:underline" onClick={() => setAmount(String(disponivel))}>Usar tudo</button>
               </div>
             </div>
+            <div className="space-y-2">
+              <Label>Descrição (opcional)</Label>
+              <Input value={desc} onChange={(e) => setDesc(e.target.value)} />
+            </div>
             <Button
               type="submit"
-              disabled={sacar.isPending || !pixKey || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > disponivel}
+              disabled={!podeEnviar}
               className="w-full gradient-primary text-primary-foreground"
             >
               {sacar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar Pix"}
@@ -165,6 +283,7 @@ function MeusRecebimentosPage() {
         </Card>
       </div>
 
+      <QrScanner open={scanOpen} onOpenChange={setScanOpen} onDecoded={onQrDecoded} />
       <TransactionDetailDialog tx={detail} onOpenChange={(o) => !o && setDetail(null)} />
     </div>
   );
