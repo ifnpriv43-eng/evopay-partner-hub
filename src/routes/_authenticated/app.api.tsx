@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Code2, Copy, Key, Loader2, Plus, Trash2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Code2, Copy, Key, Loader2, Plus, Trash2, AlertTriangle, CheckCircle2, FileText, Download } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/app/api")({
@@ -97,10 +97,44 @@ function ApiPage() {
 
       {/* Documentação */}
       <Card className="p-6">
-        <h2 className="font-semibold mb-1">Documentação</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          URL base: <code className="text-xs bg-muted px-1 py-0.5 rounded">{baseUrl}</code>
-        </p>
+        <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+          <div>
+            <h2 className="font-semibold">Documentação</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              URL base: <code className="text-xs bg-muted px-1 py-0.5 rounded">{baseUrl}</code>
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline" size="sm"
+              onClick={() => {
+                const txt = buildLlmsTxt(baseUrl, exampleToken);
+                navigator.clipboard.writeText(txt);
+                toast.success("Documentação copiada — cole na sua IA");
+              }}
+            >
+              <FileText className="h-4 w-4 mr-1" /> Copiar p/ IA
+            </Button>
+            <Button
+              variant="outline" size="sm"
+              onClick={() => {
+                const txt = buildLlmsTxt(baseUrl, exampleToken);
+                const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url; a.download = "llms.txt"; a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              <Download className="h-4 w-4 mr-1" /> Baixar llms.txt
+            </Button>
+          </div>
+        </div>
+        <div className="mb-4 rounded-lg bg-primary/5 border border-primary/20 p-3 text-xs text-muted-foreground">
+          <strong className="text-foreground">Dica:</strong> baixe o <code className="text-primary">llms.txt</code> e envie pro ChatGPT / Claude / Cursor / Copilot.
+          O arquivo já vem com todos os endpoints, exemplos e seu token — a IA gera o código de integração pra você.
+        </div>
+
 
         <div className="space-y-6">
           <EndpointDoc
@@ -307,4 +341,187 @@ function NewTokenDialog({ open, onOpenChange, onCreated, rawToken }: {
       </DialogContent>
     </Dialog>
   );
+}
+
+function buildLlmsTxt(baseUrl: string, token: string): string {
+  return `# API do Dashboard — Documentação para IAs
+
+Esta API é um wrapper próprio sobre um gateway Pix. Todo pagamento gerado
+com um token cai no saldo do dono do token. O usuário final deve usar SOMENTE
+esta API — nunca chamar o gateway original diretamente.
+
+## Autenticação
+Envie o token no header em TODAS as requisições:
+  Authorization: Bearer ${token}
+
+Formato do token: pk_live_... (32+ chars). Trate como senha.
+
+## URL base
+${baseUrl}
+
+## Formato
+- Requests JSON: Content-Type: application/json
+- Respostas: JSON UTF-8
+- Valores monetários: number em BRL (ex: 10.50 = R$ 10,50)
+- Datas: ISO 8601 UTC
+
+---
+
+## Endpoints
+
+### GET /balance
+Retorna o saldo interno do dono do token.
+
+Resposta 200:
+{
+  "recebido": 1250.00,   // total já pago (entrou)
+  "sacado": 300.00,      // total já sacado (saiu)
+  "disponivel": 950.00   // recebido - sacado
+}
+
+Exemplo:
+  curl ${baseUrl}/balance -H "Authorization: Bearer ${token}"
+
+---
+
+### POST /pix
+Gera uma cobrança Pix. Retorna QR Code copia-e-cola + imagem base64.
+
+Body:
+{
+  "amount": 10.00,               // obrigatório, número, mínimo 0.01
+  "description": "Pedido #123",  // obrigatório, string
+  "payerName": "João Silva",     // opcional
+  "payerDocument": "12345678900" // opcional, CPF/CNPJ sem máscara
+}
+
+Resposta 200:
+{
+  "id": "tx_abc123",
+  "kind": "deposito",
+  "status": "pendente",  // pendente | pago | cancelado
+  "amount": 10.00,
+  "qrCode": "00020126580014BR.GOV.BCB.PIX...",  // copia-e-cola
+  "qrImage": "data:image/png;base64,iVBOR...",   // PNG pronto pra <img src>
+  "createdAt": "2026-07-20T12:00:00.000Z"
+}
+
+---
+
+### GET /pix/{id}
+Consulta status de um Pix. Sincroniza com o gateway automaticamente.
+
+Resposta 200:
+{
+  "id": "tx_abc123",
+  "status": "pago",
+  "amount": 10.00,
+  "paidAt": "2026-07-20T12:05:32.000Z"  // null se ainda pendente
+}
+
+Erros: 404 not_found (id inexistente ou de outro dono)
+
+---
+
+### POST /withdraw
+Envia um Pix pra uma chave. Debita do saldo disponível.
+
+Body:
+{
+  "amount": 50.00,                    // obrigatório
+  "pixKey": "email@exemplo.com",      // obrigatório
+  "keyType": "email",                 // cpf | cnpj | email | telefone | aleatoria
+  "description": "Saque cliente"      // opcional
+}
+
+Resposta 200:
+{
+  "id": "tx_xyz789",
+  "kind": "saque",
+  "status": "pendente",
+  "amount": 50.00
+}
+
+Erros: 402 insufficient_balance
+
+---
+
+### POST /withdraw/qrcode
+Paga um QR Pix (copia-e-cola). Funciona pra estático e dinâmico.
+
+Body:
+{
+  "qrCode": "00020126580014BR.GOV.BCB.PIX...",
+  "amount": 25.00   // obrigatório APENAS se o QR for estático sem valor
+}
+
+Resposta: mesma estrutura do POST /withdraw.
+
+---
+
+### GET /withdraw/{id}
+Status de um saque. Sincroniza com o gateway.
+
+Resposta 200:
+{
+  "id": "tx_xyz789",
+  "status": "pago",
+  "paidAt": "2026-07-20T12:10:00.000Z"
+}
+
+---
+
+### GET /transactions?limit=50
+Lista as últimas transações do dono do token.
+
+Query params:
+- limit: número, padrão 50, máximo 200
+
+Resposta 200:
+{
+  "data": [
+    {
+      "id": "tx_...",
+      "kind": "deposito",     // deposito | saque
+      "status": "pago",
+      "amount": 10.00,
+      "description": "...",
+      "createdAt": "...",
+      "paidAt": "..."
+    }
+  ],
+  "total": 42
+}
+
+---
+
+## Códigos de erro
+
+Todas as respostas de erro seguem o formato:
+{ "error": "<code>", "message": "<detalhe>" }
+
+- 400 invalid_input       — body/campos inválidos (Zod)
+- 400 invalid_json        — JSON malformado
+- 401 unauthorized        — token ausente, inválido ou revogado
+- 402 insufficient_balance — saldo insuficiente pro saque
+- 404 not_found           — id não encontrado (ou pertence a outro dono)
+- 502 gateway_error       — falha na comunicação com o Pix
+
+---
+
+## Fluxo típico de integração (checkout)
+
+1. Cliente confirma pedido no seu sistema.
+2. POST /pix { amount, description }  -> guarde \`id\` no seu banco.
+3. Mostre o \`qrImage\` (base64) ou \`qrCode\` (copia-e-cola) pro cliente.
+4. Faça polling: GET /pix/{id} a cada 5s (ou webhook, se disponível).
+5. Quando \`status === "pago"\`, libere o produto/serviço.
+
+## Boas práticas
+
+- Nunca coloque o token em código do front-end. Use SEMPRE do servidor.
+- Trate 502 com retry exponencial.
+- Idempotência: guarde o \`id\` retornado; não crie 2 cobranças pro mesmo pedido.
+- Para valores em centavos no seu sistema, divida por 100 antes de enviar.
+`;
 }
