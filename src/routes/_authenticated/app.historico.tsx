@@ -107,7 +107,7 @@ function HistoricoPage() {
 
       <Card className="p-0 overflow-hidden">
         <div className="w-full overflow-x-auto">
-        <table className="w-full text-sm min-w-[800px]">
+        <table className="w-full text-sm min-w-[860px]">
           <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
             <tr>
               <th className="text-left py-3 px-4 font-medium">Data</th>
@@ -116,11 +116,12 @@ function HistoricoPage() {
               <th className="text-left py-3 px-4 font-medium">Contraparte</th>
               <th className="text-left py-3 px-4 font-medium">Status</th>
               <th className="text-right py-3 px-4 font-medium">Valor</th>
+              <th className="py-3 px-4"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {filtered.map((t) => (
-              <tr key={t.id}>
+              <tr key={t.id} className="hover:bg-muted/20">
                 <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">{new Date(t.createdAt).toLocaleString("pt-BR")}</td>
                 <td className="py-3 px-4">{kindLabel[t.kind]}</td>
                 <td className="py-3 px-4 font-medium">{t.description}</td>
@@ -129,15 +130,22 @@ function HistoricoPage() {
                 <td className={`py-3 px-4 text-right font-mono font-semibold ${t.kind === "deposito" ? "text-success" : ""}`}>
                   {t.kind === "deposito" ? "+" : "−"}{brl(t.amount)}
                 </td>
+                <td className="py-3 px-4 text-right">
+                  <Button size="sm" variant="ghost" onClick={() => setDetail(t)}>
+                    <Eye className="h-4 w-4 mr-1" /> Ver
+                  </Button>
+                </td>
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={6} className="text-center text-muted-foreground py-12">Nada por aqui ainda.</td></tr>
+              <tr><td colSpan={7} className="text-center text-muted-foreground py-12">Nada por aqui ainda.</td></tr>
             )}
           </tbody>
         </table>
         </div>
       </Card>
+
+      <TransactionDetailDialog tx={detail} onOpenChange={(o) => !o && setDetail(null)} />
     </div>
   );
 }
