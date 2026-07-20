@@ -19,6 +19,7 @@ function HistoricoPage() {
   const [kind, setKind] = useState<TxKind | "todos">("todos");
   const [status, setStatus] = useState<TxStatus | "todos">("todos");
   const [q, setQ] = useState("");
+  const [detail, setDetail] = useState<Transaction | null>(null);
 
   const list = useQuery({
     queryKey: ["txs", "all", kind, status],
