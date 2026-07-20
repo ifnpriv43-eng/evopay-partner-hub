@@ -14,7 +14,116 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      app_config: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      app_transactions: {
+        Row: {
+          amount: number
+          counterparty: string | null
+          created_at: string
+          description: string
+          employee_id: string | null
+          external_id: string | null
+          id: string
+          kind: string
+          paid_at: string | null
+          pix_key: string | null
+          qr_code: string | null
+          qr_image: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          counterparty?: string | null
+          created_at?: string
+          description: string
+          employee_id?: string | null
+          external_id?: string | null
+          id: string
+          kind: string
+          paid_at?: string | null
+          pix_key?: string | null
+          qr_code?: string | null
+          qr_image?: string | null
+          status: string
+        }
+        Update: {
+          amount?: number
+          counterparty?: string | null
+          created_at?: string
+          description?: string
+          employee_id?: string | null
+          external_id?: string | null
+          id?: string
+          kind?: string
+          paid_at?: string | null
+          pix_key?: string | null
+          qr_code?: string | null
+          qr_image?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_transactions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "app_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      app_users: {
+        Row: {
+          active: boolean
+          created_at: string
+          daily_amount: number | null
+          email: string
+          id: string
+          name: string
+          password_hash: string
+          pix_key: string | null
+          role: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          daily_amount?: number | null
+          email: string
+          id: string
+          name: string
+          password_hash: string
+          pix_key?: string | null
+          role: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          daily_amount?: number | null
+          email?: string
+          id?: string
+          name?: string
+          password_hash?: string
+          pix_key?: string | null
+          role?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
