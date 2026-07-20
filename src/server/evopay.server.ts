@@ -82,15 +82,36 @@ export async function createPix(input: CreatePixInput): Promise<CreatePixResult>
     method: "POST",
     body: JSON.stringify(body),
   });
-  console.log("[evopay] createPix sent amount:", body.amount, "response amount:", tx.amount, "id:", tx.id);
   const qrCode = tx.qrCodeText ?? "";
+  const qrAmount = parseBrCodeAmount(qrCode);
+  console.log("[evopay] createPix sent:", body.amount, "resp:", tx.amount, "qrCode amount:", qrAmount, "id:", tx.id);
   let qrImage: string | undefined;
   if (tx.qrCodeBase64) {
     qrImage = tx.qrCodeBase64.startsWith("data:") ? tx.qrCodeBase64 : `data:image/png;base64,${tx.qrCodeBase64}`;
   } else if (qrCode) {
+    // Regenerate PNG from qrCodeText to guarantee it matches the string we display
     qrImage = await QRCode.toDataURL(qrCode, { margin: 1, width: 320 });
   }
-  return { externalId: tx.id, qrCode, qrImage, amount: tx.amount ?? input.amount };
+  const finalAmount = qrAmount ?? tx.amount ?? input.amount;
+  return { externalId: tx.id, qrCode, qrImage, amount: finalAmount };
+}
+
+// Parses a Pix BR Code (EMV) string and returns the amount from tag 54, if present.
+function parseBrCodeAmount(brcode: string): number | undefined {
+  if (!brcode) return undefined;
+  let i = 0;
+  while (i < brcode.length - 4) {
+    const tag = brcode.slice(i, i + 2);
+    const len = parseInt(brcode.slice(i + 2, i + 4), 10);
+    if (!Number.isFinite(len)) return undefined;
+    const value = brcode.slice(i + 4, i + 4 + len);
+    if (tag === "54") {
+      const n = parseFloat(value);
+      return Number.isFinite(n) ? n : undefined;
+    }
+    i += 4 + len;
+  }
+  return undefined;
 }
 
 type UiKeyType = "cpf" | "cnpj" | "email" | "telefone" | "aleatoria";
