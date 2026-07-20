@@ -92,7 +92,7 @@ export const supabaseStore: DataStore = {
   },
   async listEmployees() {
     const sb = await admin();
-    const { data } = await sb.from("app_users").select("*").eq("role", "funcionario").order("created_at", { ascending: false });
+    const { data } = await sb.from("app_users").select("*").in("role", ["funcionario", "cliente"]).order("created_at", { ascending: false });
     return (data ?? []).map((r) => userFromRow(r as UserRow));
   },
   async createEmployee(input) {
