@@ -1,18 +1,14 @@
 // Data store selector.
-// - DATABASE_URL setada → adapter Postgres self-hosted (VPS).
+// - Padrão → adapter Postgres self-hosted (VPS).
 // - DATA_DRIVER=memory → ephemeral in-memory store (tests / offline).
-// - Padrão (Lovable preview) → adapter Supabase.
 //
-// Adapters server-only são carregados de forma preguiçosa dentro de cada
-// chamada para não vazar `client.server` nos bundles do cliente.
+// O fallback antigo de Supabase foi removido de propósito: esta aplicação usa
+// Postgres na VPS e não deve tentar inicializar Lovable Cloud/Supabase no build.
 
 import { memoryStore, memoryPassword } from "./memory";
 import type { DataStore } from "./schema";
 
-const explicit = process.env.DATA_DRIVER;
-const driver =
-  explicit ??
-  (process.env.DATABASE_URL ? "postgres" : "supabase");
+const driver = process.env.DATA_DRIVER === "memory" ? "memory" : "postgres";
 
 async function resolve(): Promise<{ store: DataStore; password: typeof memoryPassword }> {
   if (driver === "memory") return { store: memoryStore, password: memoryPassword };
@@ -20,8 +16,7 @@ async function resolve(): Promise<{ store: DataStore; password: typeof memoryPas
     const mod = await import("./postgres.server");
     return { store: mod.postgresStore, password: mod.postgresPassword };
   }
-  const mod = await import("./supabase.server");
-  return { store: mod.supabaseStore, password: mod.supabasePassword };
+  throw new Error(`DATA_DRIVER inválido: ${driver}`);
 }
 
 // Proxy: cada método resolve o adapter real na hora da chamada.
