@@ -36,7 +36,7 @@ function DepositosPage() {
   const create = useMutation({
     mutationFn: () => criarDeposito({ data: { amount: parseFloat(amount), description: desc || "Cobrança Pix", payerName: payer || undefined } }),
     onSuccess: (res) => {
-      setQr({ qrCode: res.qrCode, qrImage: res.qrImage, amount: parseFloat(amount) });
+      setQr({ qrCode: res.qrCode, qrImage: res.qrImage, amount: res.amount });
       setOpen(false);
       setAmount(""); setDesc(""); setPayer("");
       qc.invalidateQueries({ queryKey: ["txs"] });
