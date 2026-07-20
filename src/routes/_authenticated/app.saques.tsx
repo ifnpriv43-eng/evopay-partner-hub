@@ -253,7 +253,7 @@ function SaquesPage() {
         </Card>
       </div>
 
-      <QrScanner open={scanOpen} onOpenChange={setScanOpen} onDecoded={processBrCode} />
+      <QrScanner open={scanOpen} onOpenChange={setScanOpen} onDecoded={onQrDecoded} />
       <TransactionDetailDialog tx={detail} onOpenChange={(o) => !o && setDetail(null)} />
     </div>
   );
