@@ -38,7 +38,7 @@ export const criarFuncionario = createServerFn({ method: "POST" })
       pixKey: data.pixKey,
       dailyAmount: data.dailyAmount,
       active: data.active ?? true,
-      role: "funcionario",
+      role: data.role ?? "funcionario",
     });
     const { passwordHash: _p, ...safe } = u;
     return { ok: true as const, employee: safe };
