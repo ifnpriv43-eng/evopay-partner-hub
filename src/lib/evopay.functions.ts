@@ -146,8 +146,55 @@ export const meuSaldoFuncionario = createServerFn({ method: "GET" }).handler(asy
   const pendente = list
     .filter((t) => t.kind === "pagamento_funcionario" && t.status === "pendente")
     .reduce((a, b) => a + b.amount, 0);
-  return { recebido, pendente };
+  const sacado = list
+    .filter((t) => t.kind === "saque" && (t.status === "pago" || t.status === "pendente"))
+    .reduce((a, b) => a + b.amount, 0);
+  return { recebido, pendente, sacado, disponivel: Math.max(0, recebido - sacado) };
 });
+
+const meuSaqueSchema = z.object({
+  amount: z.number().positive().max(100000),
+  pixKey: z.string().trim().min(3).max(200),
+  keyType: z.enum(["cpf", "cnpj", "email", "telefone", "aleatoria"]),
+  description: z.string().trim().max(200).optional(),
+});
+
+export const sacarMeuSaldo = createServerFn({ method: "POST" })
+  .inputValidator((raw: unknown) => meuSaqueSchema.parse(raw))
+  .handler(async ({ data }) => {
+    const s = await requireSession();
+    // Verifica saldo disponível
+    const list = await db.listTransactionsForEmployee(s.userId!);
+    const recebido = list
+      .filter((t) => t.kind === "pagamento_funcionario" && t.status === "pago")
+      .reduce((a, b) => a + b.amount, 0);
+    const sacado = list
+      .filter((t) => t.kind === "saque" && (t.status === "pago" || t.status === "pendente"))
+      .reduce((a, b) => a + b.amount, 0);
+    const disponivel = recebido - sacado;
+    if (data.amount > disponivel) {
+      throw new Error(`Saldo insuficiente. Disponível: R$ ${disponivel.toFixed(2)}`);
+    }
+    const payout = await createPayout({
+      amount: data.amount,
+      pixKey: data.pixKey,
+      keyType: data.keyType,
+      beneficiaryName: "—",
+      description: data.description,
+    });
+    const tx = await db.createTransaction({
+      kind: "saque",
+      status: payout.status,
+      amount: data.amount,
+      description: data.description ?? "Saque do saldo",
+      pixKey: data.pixKey,
+      counterparty: data.keyType,
+      externalId: payout.externalId,
+      employeeId: s.userId!,
+      paidAt: payout.status === "pago" ? new Date().toISOString() : undefined,
+    });
+    return { tx };
+  });
 
 const idSchema = z.object({ id: z.string() });
 

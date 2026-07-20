@@ -41,18 +41,18 @@ export const listarTransacoes = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => filterSchema.parse(raw ?? {}))
   .handler(async ({ data }) => {
     const s = await requireSession();
-    const rows = s.role === "funcionario"
-      ? await db.listTransactionsForEmployee(s.userId!)
-      : await db.listTransactions(data as { kind?: TxKind; status?: TxStatus; limit?: number });
+    const rows = s.role === "admin"
+      ? await db.listTransactions(data as { kind?: TxKind; status?: TxStatus; limit?: number })
+      : await db.listTransactionsForEmployee(s.userId!);
     return syncPending(rows);
   });
 
 export const resumoDashboard = createServerFn({ method: "GET" }).handler(async () => {
   const s = await requireSession();
   const all =
-    s.role === "funcionario"
-      ? await db.listTransactionsForEmployee(s.userId!)
-      : await db.listTransactions();
+    s.role === "admin"
+      ? await db.listTransactions()
+      : await db.listTransactionsForEmployee(s.userId!);
 
   const today = new Date().toISOString().slice(0, 10);
   const monthPrefix = new Date().toISOString().slice(0, 7);

@@ -19,8 +19,8 @@ const createSchema = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(255),
   password: z.string().min(4).max(200),
-  pixKey: z.string().trim().min(3).max(200),
-  dailyAmount: z.number().nonnegative().max(100000),
+  pixKey: z.string().trim().max(200).optional().or(z.literal("")),
+  dailyAmount: z.number().nonnegative().max(100000).optional(),
   active: z.boolean().optional(),
   role: z.enum(["funcionario", "cliente"]).optional(),
 });
@@ -35,8 +35,8 @@ export const criarFuncionario = createServerFn({ method: "POST" })
       name: data.name,
       email: data.email,
       passwordHash: pw.hash(data.password),
-      pixKey: data.pixKey,
-      dailyAmount: data.dailyAmount,
+      pixKey: data.pixKey || undefined,
+      dailyAmount: data.dailyAmount ?? 0,
       active: data.active ?? true,
       role: data.role ?? "funcionario",
     });
@@ -47,7 +47,7 @@ export const criarFuncionario = createServerFn({ method: "POST" })
 const updateSchema = z.object({
   id: z.string(),
   name: z.string().trim().min(2).max(120).optional(),
-  pixKey: z.string().trim().min(3).max(200).optional(),
+  pixKey: z.string().trim().max(200).optional().or(z.literal("")),
   dailyAmount: z.number().nonnegative().max(100000).optional(),
   active: z.boolean().optional(),
   password: z.string().min(4).max(200).optional(),
