@@ -9,8 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { StatusBadge, brl } from "@/components/tx-helpers";
-import { Copy, Loader2, Plus, CheckCircle2 } from "lucide-react";
+import { TransactionDetailDialog } from "@/components/transaction-detail-dialog";
+import { Copy, Loader2, Plus, CheckCircle2, Eye } from "lucide-react";
 import { toast } from "sonner";
+import type { Transaction } from "@/server/db/schema";
 
 export const Route = createFileRoute("/_authenticated/app/depositos")({
   component: DepositosPage,
@@ -23,10 +25,12 @@ function DepositosPage() {
   const [desc, setDesc] = useState("");
   const [payer, setPayer] = useState("");
   const [qr, setQr] = useState<{ qrCode: string; qrImage?: string; amount: number } | null>(null);
+  const [detail, setDetail] = useState<Transaction | null>(null);
 
   const list = useQuery({
     queryKey: ["txs", "deposito"],
     queryFn: () => listarTransacoes({ data: { kind: "deposito", limit: 100 } }),
+    refetchInterval: (q) => (q.state.data?.some((t) => t.status === "pendente") ? 8000 : false),
   });
 
   const create = useMutation({
@@ -53,8 +57,8 @@ function DepositosPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold">Depósitos</h1>
           <p className="text-muted-foreground text-sm mt-1">Gere cobranças Pix e acompanhe pagamentos.</p>
         </div>
@@ -65,39 +69,42 @@ function DepositosPage() {
 
       <Card className="p-0 overflow-hidden">
         <div className="w-full overflow-x-auto">
-        <table className="w-full text-sm min-w-[720px]">
-          <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
-            <tr>
-              <th className="text-left py-3 px-4 font-medium">Descrição</th>
-              <th className="text-left py-3 px-4 font-medium">Pagador</th>
-              <th className="text-left py-3 px-4 font-medium">Data</th>
-              <th className="text-left py-3 px-4 font-medium">Status</th>
-              <th className="text-right py-3 px-4 font-medium">Valor</th>
-              <th className="py-3 px-4"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {(list.data ?? []).map((t) => (
-              <tr key={t.id}>
-                <td className="py-3 px-4 font-medium">{t.description}</td>
-                <td className="py-3 px-4 text-muted-foreground">{t.counterparty ?? "—"}</td>
-                <td className="py-3 px-4 text-muted-foreground">{new Date(t.createdAt).toLocaleString("pt-BR")}</td>
-                <td className="py-3 px-4"><StatusBadge status={t.status} /></td>
-                <td className="py-3 px-4 text-right font-mono font-semibold text-success">+{brl(t.amount)}</td>
-                <td className="py-3 px-4 text-right">
-                  {t.status === "pendente" && (
-                    <Button size="sm" variant="ghost" onClick={() => simulate.mutate(t.id)}>
-                      <CheckCircle2 className="h-4 w-4 mr-1" /> Simular pgto
-                    </Button>
-                  )}
-                </td>
+          <table className="w-full text-sm min-w-[720px]">
+            <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="text-left py-3 px-4 font-medium">Descrição</th>
+                <th className="text-left py-3 px-4 font-medium">Pagador</th>
+                <th className="text-left py-3 px-4 font-medium">Data</th>
+                <th className="text-left py-3 px-4 font-medium">Status</th>
+                <th className="text-right py-3 px-4 font-medium">Valor</th>
+                <th className="py-3 px-4"></th>
               </tr>
-            ))}
-            {(!list.data || list.data.length === 0) && (
-              <tr><td colSpan={6} className="text-center text-muted-foreground py-8">Nenhum depósito ainda.</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {(list.data ?? []).map((t) => (
+                <tr key={t.id} className="hover:bg-muted/20">
+                  <td className="py-3 px-4 font-medium">{t.description}</td>
+                  <td className="py-3 px-4 text-muted-foreground">{t.counterparty ?? "—"}</td>
+                  <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">{new Date(t.createdAt).toLocaleString("pt-BR")}</td>
+                  <td className="py-3 px-4"><StatusBadge status={t.status} /></td>
+                  <td className="py-3 px-4 text-right font-mono font-semibold text-success">+{brl(t.amount)}</td>
+                  <td className="py-3 px-4 text-right whitespace-nowrap">
+                    {t.status === "pendente" && (
+                      <Button size="sm" variant="ghost" onClick={() => simulate.mutate(t.id)}>
+                        <CheckCircle2 className="h-4 w-4 mr-1" /> Simular
+                      </Button>
+                    )}
+                    <Button size="sm" variant="ghost" onClick={() => setDetail(t)}>
+                      <Eye className="h-4 w-4 mr-1" /> Ver
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+              {(!list.data || list.data.length === 0) && (
+                <tr><td colSpan={6} className="text-center text-muted-foreground py-8">Nenhum depósito ainda.</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </Card>
 
@@ -145,10 +152,12 @@ function DepositosPage() {
                 </Button>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">O status será atualizado automaticamente quando o pagamento for confirmado pela EvoPay.</p>
+            <p className="text-xs text-muted-foreground">O status é atualizado automaticamente a cada poucos segundos.</p>
           </div>
         </DialogContent>
       </Dialog>
+
+      <TransactionDetailDialog tx={detail} onOpenChange={(o) => !o && setDetail(null)} />
     </div>
   );
 }
