@@ -39,17 +39,20 @@ export const criarDeposito = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requireAdmin();
     const pix = await createPix(data);
+    if (Math.abs(pix.amount - data.amount) > 0.001) {
+      console.warn(`[deposito] EvoPay retornou valor diferente. Enviado=${data.amount} recebido=${pix.amount}`);
+    }
     const tx = await db.createTransaction({
       kind: "deposito",
       status: "pendente",
-      amount: data.amount,
+      amount: pix.amount,
       description: data.description,
       counterparty: data.payerName ?? "—",
       externalId: pix.externalId,
       qrCode: pix.qrCode,
       qrImage: pix.qrImage,
     });
-    return { tx, qrCode: pix.qrCode, qrImage: pix.qrImage };
+    return { tx, qrCode: pix.qrCode, qrImage: pix.qrImage, amount: pix.amount };
   });
 
 const sacarSchema = z.object({
