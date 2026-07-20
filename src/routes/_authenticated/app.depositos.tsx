@@ -1,0 +1,147 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { criarDeposito, simularPagamento } from "@/lib/evopay.functions";
+import { listarTransacoes } from "@/lib/transactions.functions";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { StatusBadge, brl } from "@/components/tx-helpers";
+import { Copy, Loader2, Plus, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/_authenticated/app/depositos")({
+  component: DepositosPage,
+});
+
+function DepositosPage() {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [desc, setDesc] = useState("");
+  const [payer, setPayer] = useState("");
+  const [qr, setQr] = useState<{ qrCode: string; amount: number } | null>(null);
+
+  const list = useQuery({
+    queryKey: ["txs", "deposito"],
+    queryFn: () => listarTransacoes({ data: { kind: "deposito", limit: 100 } }),
+  });
+
+  const create = useMutation({
+    mutationFn: () => criarDeposito({ data: { amount: parseFloat(amount), description: desc || "Cobrança Pix", payerName: payer || undefined } }),
+    onSuccess: (res) => {
+      setQr({ qrCode: res.qrCode, amount: parseFloat(amount) });
+      setOpen(false);
+      setAmount(""); setDesc(""); setPayer("");
+      qc.invalidateQueries({ queryKey: ["txs"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("Cobrança gerada");
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const simulate = useMutation({
+    mutationFn: (id: string) => simularPagamento({ data: { id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["txs"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      toast.success("Pagamento confirmado");
+    },
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Depósitos</h1>
+          <p className="text-muted-foreground text-sm mt-1">Gere cobranças Pix e acompanhe pagamentos.</p>
+        </div>
+        <Button onClick={() => setOpen(true)} className="gradient-primary text-primary-foreground">
+          <Plus className="h-4 w-4 mr-2" /> Nova cobrança
+        </Button>
+      </div>
+
+      <Card className="p-0 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
+            <tr>
+              <th className="text-left py-3 px-4 font-medium">Descrição</th>
+              <th className="text-left py-3 px-4 font-medium">Pagador</th>
+              <th className="text-left py-3 px-4 font-medium">Data</th>
+              <th className="text-left py-3 px-4 font-medium">Status</th>
+              <th className="text-right py-3 px-4 font-medium">Valor</th>
+              <th className="py-3 px-4"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {(list.data ?? []).map((t) => (
+              <tr key={t.id}>
+                <td className="py-3 px-4 font-medium">{t.description}</td>
+                <td className="py-3 px-4 text-muted-foreground">{t.counterparty ?? "—"}</td>
+                <td className="py-3 px-4 text-muted-foreground">{new Date(t.createdAt).toLocaleString("pt-BR")}</td>
+                <td className="py-3 px-4"><StatusBadge status={t.status} /></td>
+                <td className="py-3 px-4 text-right font-mono font-semibold text-success">+{brl(t.amount)}</td>
+                <td className="py-3 px-4 text-right">
+                  {t.status === "pendente" && (
+                    <Button size="sm" variant="ghost" onClick={() => simulate.mutate(t.id)}>
+                      <CheckCircle2 className="h-4 w-4 mr-1" /> Simular pgto
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {(!list.data || list.data.length === 0) && (
+              <tr><td colSpan={6} className="text-center text-muted-foreground py-8">Nenhum depósito ainda.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </Card>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Nova cobrança Pix</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Valor (R$)</Label>
+              <Input type="number" step="0.01" min="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Descrição</Label>
+              <Input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Ex: Cobrança #123" />
+            </div>
+            <div className="space-y-2">
+              <Label>Nome do pagador (opcional)</Label>
+              <Input value={payer} onChange={(e) => setPayer(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button onClick={() => create.mutate()} disabled={!amount || create.isPending} className="gradient-primary text-primary-foreground">
+              {create.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Gerar Pix"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!qr} onOpenChange={(o) => !o && setQr(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Pix gerado — {qr && brl(qr.amount)}</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg bg-muted p-4">
+              <Label className="text-xs">Código copia e cola</Label>
+              <div className="mt-2 flex gap-2">
+                <code className="flex-1 text-xs break-all bg-background rounded px-2 py-1.5">{qr?.qrCode}</code>
+                <Button size="icon" variant="outline" onClick={() => { navigator.clipboard.writeText(qr?.qrCode ?? ""); toast.success("Copiado"); }}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">O status será atualizado automaticamente quando o pagamento for confirmado pela EvoPay.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
