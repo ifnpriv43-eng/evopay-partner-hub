@@ -1,7 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { db } from "@/server/db";
-import { createPix, createPayout, getBalance, isMock } from "@/server/evopay.server";
+import {
+  createPix,
+  createPayout,
+  getBalance,
+  getPixStatus,
+  getWithdrawStatus,
+  isMock,
+} from "@/server/evopay.server";
 import { getSessionData } from "./session.server";
 
 async function requireAdmin() {
@@ -9,6 +16,12 @@ async function requireAdmin() {
   if (!session.userId || session.role !== "admin") {
     throw new Error("Não autorizado");
   }
+  return session;
+}
+
+async function requireSession() {
+  const session = await getSessionData();
+  if (!session.userId) throw new Error("Não autorizado");
   return session;
 }
 
@@ -70,14 +83,51 @@ export const criarSaque = createServerFn({ method: "POST" })
   });
 
 export const consultarSaldo = createServerFn({ method: "GET" }).handler(async () => {
+  // Saldo do gateway é sensível — só admin
+  await requireAdmin();
   return { ...(await getBalance()), mock: isMock };
 });
 
-// Simulate payment of a pending deposit — preview convenience so users can see
-// the whole flow without a real webhook.
-const simSchema = z.object({ id: z.string() });
+export const meuSaldoFuncionario = createServerFn({ method: "GET" }).handler(async () => {
+  const s = await requireSession();
+  const list = await db.listTransactionsForEmployee(s.userId!);
+  const recebido = list
+    .filter((t) => t.kind === "pagamento_funcionario" && t.status === "pago")
+    .reduce((a, b) => a + b.amount, 0);
+  const pendente = list
+    .filter((t) => t.kind === "pagamento_funcionario" && t.status === "pendente")
+    .reduce((a, b) => a + b.amount, 0);
+  return { recebido, pendente };
+});
+
+const idSchema = z.object({ id: z.string() });
+
+export const atualizarStatusTransacao = createServerFn({ method: "POST" })
+  .inputValidator((raw: unknown) => idSchema.parse(raw))
+  .handler(async ({ data }) => {
+    await requireSession();
+    const tx = await db.getTransaction(data.id);
+    if (!tx || !tx.externalId) return { ok: false, tx };
+    const remote =
+      tx.kind === "deposito"
+        ? await getPixStatus(tx.externalId)
+        : tx.kind === "saque"
+        ? await getWithdrawStatus(tx.externalId)
+        : null;
+    if (!remote) return { ok: false, tx };
+    if (remote.status !== tx.status) {
+      const updated = await db.updateTransaction(tx.id, {
+        status: remote.status,
+        paidAt: remote.status === "pago" ? remote.paidAt ?? new Date().toISOString() : tx.paidAt,
+      });
+      return { ok: true, tx: updated };
+    }
+    return { ok: true, tx };
+  });
+
+// Simulate payment of a pending deposit — preview convenience.
 export const simularPagamento = createServerFn({ method: "POST" })
-  .inputValidator((raw: unknown) => simSchema.parse(raw))
+  .inputValidator((raw: unknown) => idSchema.parse(raw))
   .handler(async ({ data }) => {
     await requireAdmin();
     const tx = await db.getTransaction(data.id);

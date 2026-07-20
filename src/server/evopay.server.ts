@@ -47,6 +47,17 @@ interface EvoPayTransaction {
   qrCodeBase64?: string | null;
   qrCodeUrl?: string | null;
   status?: string;
+  endToEndId?: string | null;
+  paidAt?: string | null;
+  updatedAt?: string | null;
+}
+
+function mapStatus(s: string | undefined | null): "pendente" | "pago" | "expirado" | "falhou" {
+  const v = (s ?? "").toUpperCase();
+  if (v === "COMPLETED" || v === "PAID" || v === "CONFIRMED") return "pago";
+  if (v === "EXPIRED") return "expirado";
+  if (v === "CANCELED" || v === "ERROR" || v === "FAILED" || v === "REFUSED") return "falhou";
+  return "pendente";
 }
 
 export async function createPix(input: CreatePixInput): Promise<CreatePixResult> {
@@ -84,7 +95,6 @@ function mapKeyType(t: UiKeyType | undefined, key: string): ApiPixType {
   if (t === "telefone") return "phone";
   if (t === "aleatoria") return "evp";
   if (t === "cpf" || t === "cnpj" || t === "email") return t;
-  // fallback autodetect
   const k = key.trim();
   if (/^\S+@\S+\.\S+$/.test(k)) return "email";
   const digits = k.replace(/\D/g, "");
@@ -124,11 +134,44 @@ export async function createPayout(input: PayoutInput): Promise<PayoutResult> {
       description: input.description,
     }),
   });
-  const s = (tx.status ?? "PENDING").toUpperCase();
-  return {
-    externalId: tx.id,
-    status: s === "COMPLETED" ? "pago" : s === "CANCELED" || s === "ERROR" || s === "EXPIRED" ? "falhou" : "pendente",
-  };
+  const s = mapStatus(tx.status);
+  return { externalId: tx.id, status: s === "expirado" ? "falhou" : s };
+}
+
+export interface RemoteStatus {
+  status: "pendente" | "pago" | "expirado" | "falhou";
+  endToEndId?: string;
+  paidAt?: string;
+}
+
+export async function getPixStatus(externalId: string): Promise<RemoteStatus | null> {
+  if (!TOKEN) return null;
+  try {
+    const tx = await call<EvoPayTransaction>(`/pix/?id=${encodeURIComponent(externalId)}`);
+    return {
+      status: mapStatus(tx.status),
+      endToEndId: tx.endToEndId ?? undefined,
+      paidAt: tx.paidAt ?? tx.updatedAt ?? undefined,
+    };
+  } catch (err) {
+    console.error("[evopay] getPixStatus failed:", err);
+    return null;
+  }
+}
+
+export async function getWithdrawStatus(externalId: string): Promise<RemoteStatus | null> {
+  if (!TOKEN) return null;
+  try {
+    const tx = await call<EvoPayTransaction>(`/withdraw/?id=${encodeURIComponent(externalId)}`);
+    return {
+      status: mapStatus(tx.status),
+      endToEndId: tx.endToEndId ?? undefined,
+      paidAt: tx.paidAt ?? tx.updatedAt ?? undefined,
+    };
+  } catch (err) {
+    console.error("[evopay] getWithdrawStatus failed:", err);
+    return null;
+  }
 }
 
 export async function getBalance(): Promise<{ available: number; pending: number }> {
