@@ -162,7 +162,21 @@ export const consultarSaldo = createServerFn({ method: "GET" }).handler(async ()
 export const meuSaldoFuncionario = createServerFn({ method: "GET" }).handler(async () => {
   const s = await requireSession();
   const user = await db.getUserById(s.userId!);
-  const list = await db.listTransactionsForEmployee(s.userId!);
+  const rawList = await db.listTransactionsForEmployee(s.userId!);
+  const synced = await Promise.all(
+    rawList.map(async (t) => {
+      if (t.status !== "pendente" || !t.externalId || (t.kind !== "saque" && t.kind !== "pagamento_funcionario")) return t;
+      const remote = await getWithdrawStatus(t.externalId);
+      if (!remote || remote.status === t.status) return t;
+      return (
+        (await db.updateTransaction(t.id, {
+          status: remote.status,
+          paidAt: remote.status === "pago" ? remote.paidAt ?? new Date().toISOString() : t.paidAt,
+        })) ?? t
+      );
+    }),
+  );
+  const list = synced;
   const hojeBrasilia = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Sao_Paulo",
     year: "numeric",

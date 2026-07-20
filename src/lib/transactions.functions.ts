@@ -6,13 +6,13 @@ import { getPixStatus, getWithdrawStatus } from "@/server/evopay.server";
 import type { Transaction, TxKind, TxStatus } from "@/server/db/schema";
 
 async function syncPending(rows: Transaction[]): Promise<Transaction[]> {
-  const pend = rows.filter((t) => t.status === "pendente" && t.externalId && (t.kind === "deposito" || t.kind === "saque"));
+  const pend = rows.filter(
+    (t) => t.status === "pendente" && t.externalId && (t.kind === "deposito" || t.kind === "saque" || t.kind === "pagamento_funcionario"),
+  );
   if (!pend.length) return rows;
   const updates = await Promise.all(pend.map(async (t) => {
     try {
-      const remote = t.kind === "deposito"
-        ? await getPixStatus(t.externalId!)
-        : await getWithdrawStatus(t.externalId!);
+      const remote = t.kind === "deposito" ? await getPixStatus(t.externalId!) : await getWithdrawStatus(t.externalId!);
       if (!remote || remote.status === t.status) return null;
       return db.updateTransaction(t.id, {
         status: remote.status,
