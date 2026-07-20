@@ -19,6 +19,7 @@ import { Route as AuthenticatedAppMeusRecebimentosRouteImport } from './routes/_
 import { Route as AuthenticatedAppHistoricoRouteImport } from './routes/_authenticated/app.historico'
 import { Route as AuthenticatedAppFuncionariosRouteImport } from './routes/_authenticated/app.funcionarios'
 import { Route as AuthenticatedAppDepositosRouteImport } from './routes/_authenticated/app.depositos'
+import { Route as AuthenticatedAppApiRouteImport } from './routes/_authenticated/app.api'
 import { Route as ApiPublicV1WithdrawRouteImport } from './routes/api/public/v1/withdraw'
 import { Route as ApiPublicV1TransactionsRouteImport } from './routes/api/public/v1/transactions'
 import { Route as ApiPublicV1PixRouteImport } from './routes/api/public/v1/pix'
@@ -81,6 +82,11 @@ const AuthenticatedAppDepositosRoute =
     path: '/depositos',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
+const AuthenticatedAppApiRoute = AuthenticatedAppApiRouteImport.update({
+  id: '/api',
+  path: '/api',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
 const ApiPublicV1WithdrawRoute = ApiPublicV1WithdrawRouteImport.update({
   id: '/api/public/v1/withdraw',
   path: '/api/public/v1/withdraw',
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/app': typeof AuthenticatedAppRouteWithChildren
+  '/app/api': typeof AuthenticatedAppApiRoute
   '/app/depositos': typeof AuthenticatedAppDepositosRoute
   '/app/funcionarios': typeof AuthenticatedAppFuncionariosRoute
   '/app/historico': typeof AuthenticatedAppHistoricoRoute
@@ -145,6 +152,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/app/api': typeof AuthenticatedAppApiRoute
   '/app/depositos': typeof AuthenticatedAppDepositosRoute
   '/app/funcionarios': typeof AuthenticatedAppFuncionariosRoute
   '/app/historico': typeof AuthenticatedAppHistoricoRoute
@@ -166,6 +174,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
+  '/_authenticated/app/api': typeof AuthenticatedAppApiRoute
   '/_authenticated/app/depositos': typeof AuthenticatedAppDepositosRoute
   '/_authenticated/app/funcionarios': typeof AuthenticatedAppFuncionariosRoute
   '/_authenticated/app/historico': typeof AuthenticatedAppHistoricoRoute
@@ -187,6 +196,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/app'
+    | '/app/api'
     | '/app/depositos'
     | '/app/funcionarios'
     | '/app/historico'
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/app/api'
     | '/app/depositos'
     | '/app/funcionarios'
     | '/app/historico'
@@ -225,6 +236,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/login'
     | '/_authenticated/app'
+    | '/_authenticated/app/api'
     | '/_authenticated/app/depositos'
     | '/_authenticated/app/funcionarios'
     | '/_authenticated/app/historico'
@@ -324,6 +336,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppDepositosRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/api': {
+      id: '/_authenticated/app/api'
+      path: '/api'
+      fullPath: '/app/api'
+      preLoaderRoute: typeof AuthenticatedAppApiRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/api/public/v1/withdraw': {
       id: '/api/public/v1/withdraw'
       path: '/api/public/v1/withdraw'
@@ -384,6 +403,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAppRouteChildren {
+  AuthenticatedAppApiRoute: typeof AuthenticatedAppApiRoute
   AuthenticatedAppDepositosRoute: typeof AuthenticatedAppDepositosRoute
   AuthenticatedAppFuncionariosRoute: typeof AuthenticatedAppFuncionariosRoute
   AuthenticatedAppHistoricoRoute: typeof AuthenticatedAppHistoricoRoute
@@ -393,6 +413,7 @@ interface AuthenticatedAppRouteChildren {
 }
 
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
+  AuthenticatedAppApiRoute: AuthenticatedAppApiRoute,
   AuthenticatedAppDepositosRoute: AuthenticatedAppDepositosRoute,
   AuthenticatedAppFuncionariosRoute: AuthenticatedAppFuncionariosRoute,
   AuthenticatedAppHistoricoRoute: AuthenticatedAppHistoricoRoute,
